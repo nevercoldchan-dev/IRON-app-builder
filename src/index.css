@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg: #ffffff;
+  --bg-soft: #fbfbfc;
+  --line: #e6e6eb;
+  --line-strong: #d8d8de;
+  --text: #1d1d1f;
+  --sub: #6e6e73;
+  --muted: #8a8a92;
+  --blue: #2979ff;
+  --blue-soft: #eaf2ff;
+  --blue-border: #9fc0ff;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 6px 20px rgba(0, 0, 0, 0.04);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 微信或编辑器等精致滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d7de;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c2c7d0;
+}
+
+/* 拟真2D SLAM室内地图渲染 */
+.map-canvas {
+  position: relative;
+  min-height: 520px;
+  border: 1px solid #e4e7ee;
+  border-radius: 20px;
+  background: 
+    radial-gradient(circle at 18% 20%, rgba(77, 167, 255, 0.16) 0 42px, transparent 43px),
+    radial-gradient(circle at 76% 24%, rgba(77, 167, 255, 0.12) 0 58px, transparent 59px),
+    radial-gradient(circle at 64% 74%, rgba(77, 167, 255, 0.1) 0 46px, transparent 47px),
+    linear-gradient(180deg, #f7fbff 0%, #eef5ff 100%);
+  overflow: hidden;
+}
+
+.map-canvas::before {
+  content: "";
+  position: absolute;
+  inset: 20px;
+  border-radius: 18px;
+  background: 
+    linear-gradient(90deg, transparent 0 16%, rgba(127, 160, 209, 0.55) 16% 19%, transparent 19% 42%, rgba(127, 160, 209, 0.55) 42% 45%, transparent 45% 100%),
+    linear-gradient(180deg, transparent 0 14%, rgba(127, 160, 209, 0.55) 14% 17%, transparent 17% 34%, rgba(127, 160, 209, 0.55) 34% 37%, transparent 37% 62%, rgba(127, 160, 209, 0.55) 62% 65%, transparent 65% 100%),
+    radial-gradient(circle at 24% 26%, rgba(125, 176, 255, 0.14) 0 40px, transparent 41px),
+    radial-gradient(circle at 70% 58%, rgba(125, 176, 255, 0.14) 0 54px, transparent 55px),
+    #fdfefe;
+  box-shadow: inset 0 0 0 1px rgba(186, 198, 220, 0.7);
+}
+
+.map-canvas::after {
+  content: "SLAM MAP - 1:100";
+  position: absolute;
+  right: 20px;
+  top: 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #9aa8bf;
+  z-index: 2;
+}
+
+.map-room {
+  position: absolute;
+  border: 1.5px solid #9bb2d4;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(2px);
+  z-index: 2;
+  box-shadow: 0 4px 12px rgba(13, 37, 80, 0.03);
+  transition: all 0.3s ease;
+}
+
+.map-room:hover {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: #5b96ff;
+  box-shadow: 0 6px 18px rgba(41, 121, 255, 0.08);
+}
+
+.map-room.lobby {
+  left: 30px;
+  top: 50px;
+  width: 130px;
+  height: 90px;
+}
+
+.map-room.hall {
+  left: 180px;
+  top: 70px;
+  width: 170px;
+  height: 120px;
+}
+
+.map-room.washroom {
+  right: 40px;
+  top: 60px;
+  width: 100px;
+  height: 80px;
+}
+
+.map-room.storage {
+  right: 40px;
+  bottom: 50px;
+  width: 110px;
+  height: 90px;
+}
+
+.map-room.rest {
+  left: 40px;
+  bottom: 50px;
+  width: 130px;
+  height: 100px;
+}
+
+.map-path {
+  position: absolute;
+  border: 6px solid rgba(63, 145, 255, 0.22);
+  border-radius: 999px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.map-path.path-1 {
+  left: 100px;
+  top: 110px;
+  width: 160px;
+  height: 80px;
+  border-top: none;
+  border-left: none;
+}
+
+.map-path.path-2 {
+  left: 240px;
+  top: 140px;
+  width: 150px;
+  height: 150px;
+  border-right: none;
+  border-top: none;
+}
+
+.map-path.path-3 {
+  left: 130px;
+  top: 200px;
+  width: 120px;
+  height: 120px;
+  border-left: none;
+  border-bottom: none;
+}
+
+.map-pin {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d6e1f3;
+  box-shadow: 0 6px 14px rgba(43, 88, 163, 0.08);
+  z-index: 3;
+}
+
+.map-pin::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2979ff;
+  box-shadow: 0 0 0 3px rgba(41, 121, 255, 0.18);
+}
+
+.map-pin span {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: #1d1d1f;
+  white-space: nowrap;
+}
+
+.map-pin.greeting {
+  left: 55px;
+  top: 85px;
+}
+
+.map-pin.wc {
+  right: 55px;
+  top: 85px;
+}
+
+.map-pin.storage {
+  right: 55px;
+  bottom: 85px;
+}
+
+.map-robot {
+  position: absolute;
+  left: 215px;
+  top: 190px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 34%, #ffffff 0 8px, #d8e7ff 9px, #8bb4ff 62%, #4d89ef 100%);
+  box-shadow: 0 6px 14px rgba(41, 121, 255, 0.28);
+  z-index: 10;
+}
+
+.map-robot::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(255, 255, 255, 0.85);
+  animation: spin 8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 微信/AI代码编辑器带有行号的水印样式 */
+.code-editor {
+  display: flex;
+  min-height: 200px;
+  height: 100%;
+  overflow: hidden;
+  background: #fff;
+}
+
+.code-gutter {
+  width: 52px;
+  background: #fafafc;
+  border-right: 1px solid #eeeff2;
+  color: #9aa0ad;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  padding: 18px 0;
+  text-align: right;
+  padding-right: 12px;
+  user-select: none;
+}

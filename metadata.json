@@ -1,0 +1,6 @@
+{
+  "name": "我是一个导览员",
+  "description": "一个1:1还原的智能导览开发平台，支持迎宾流程和公司介绍的高保真配置与实时交互。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
