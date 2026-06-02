@@ -67,22 +67,22 @@ const initialChatHistory: ChatHistoryRecord[] = [
 
 const templates = [
   {
-    icon: '🏎️',
-    name: '小鹏智驾体验官',
-    description: '专注于小鹏汽车系列车型的智驾方案、硬核三电、XPILOT 辅助驾驶及试驾流程的智能解说员专家。',
-    prompt: '你是小鹏汽车展厅解说小姐姐，你的任务是带访客参观展厅，介绍小鹏发展史，响应用户的问题'
+    icon: '🛍️',
+    name: 'AI 智能导购专家',
+    description: '专注于商场/数码展区的商品特征、参数对比与优惠推荐，为顾客提供一对一贴心高效的导购服务。',
+    prompt: '创建一个AI智能导购，能够精准讲解展区产品参数、实时报价和优惠活动，通过亲和力强的互动引导顾客完成下单流程'
   },
   {
-    icon: '🏢',
-    name: '硬核物理馆解说家',
-    description: '针对大型科普科技体验馆、科普物理实验室进行通俗讲解的情境对话师，擅长结合物理定律答疑解惑。',
-    prompt: '设定一个科技馆硬核物理科普解说师，带领孩子及成人探索粒子物理展厅并解答各种硬核科学问题'
+    icon: '🏛️',
+    name: '场馆博古导览师',
+    description: '适用于博物馆、美术馆等人文科学馆，提供核心展品的深度趣味讲解与多路线漫步游览规划。',
+    prompt: '创建一个展馆AI导览师，负责向来访游客提供多路线漫步规划，并深入通俗地讲解馆内的历史文物或科技展品，解答科普疑问'
   },
   {
-    icon: '🎨',
-    name: '美学沙龙情感策展人',
-    description: '温婉优雅风格，擅长讲解展区画作、艺术流派、策展背后的情感表达与历史故事的人文主理人。',
-    prompt: '设定一个美术馆情感沙龙策展大师，使用具有诗意且充满人文关怀的语气，讲解世界级画展细节'
+    icon: '🗺️',
+    name: '园区高精导航员',
+    description: '针对复杂园区或多层楼宇提供物理路径寻路、周边设施查询、会议室导航等综合智能指引。',
+    prompt: '创建一个园区导寻助手，提供清晰的物理位置与点对点地图寻路指引，协调引导访客直达目的地'
   }
 ];
 
@@ -177,7 +177,7 @@ export default function App() {
   const [isDeepThinkingExpanded, setIsDeepThinkingExpanded] = useState<boolean>(true);
 
   // 核心路由与大纲剧本
-  const [currentScriptView, setCurrentScriptView] = useState<'welcomeFlow' | 'companyIntro' | 'visitorReception'>('welcomeFlow');
+  const [currentScriptView, setCurrentScriptView] = useState<string>('welcomeFlow');
   const [activePanelTab, setActivePanelTab] = useState<'script' | 'task' | 'persona'>('persona');
   
   // 音色配置
@@ -807,12 +807,12 @@ keywords:
               }}
               className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
                 step1Selected === opt.id 
-                  ? 'border-emerald-500 bg-emerald-50/5' 
+                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
                   : 'border-slate-205 hover:border-slate-300 bg-white'
               }`}
             >
               <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step1Selected === opt.id ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'
+                step1Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
               }`}>
                 {opt.id}
               </div>
@@ -821,7 +821,7 @@ keywords:
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
               </div>
               {step1Selected === opt.id && (
-                <Check className="w-4 h-4 text-emerald-500 shrink-0 self-center" />
+                <Check className="w-4 h-4 text-black shrink-0 self-center" />
               )}
             </div>
           ))}
@@ -832,7 +832,7 @@ keywords:
               <input
                 type="text"
                 placeholder="如：高端汽车销售展厅、太空探索巡回特展等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-emerald-500"
+                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
                 value={step1CustomText}
                 onChange={(e) => {
                   setStep1CustomText(e.target.value);
@@ -866,21 +866,21 @@ keywords:
               }}
               className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
                 step2Selected === opt.id 
-                  ? 'border-emerald-500 bg-emerald-50/5' 
+                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
                   : 'border-slate-202 hover:border-slate-300 bg-white'
               }`}
             >
               <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step2Selected === opt.id ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'
+                step2Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
               }`}>
                 {opt.id}
               </div>
               <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-700">{opt.title}</h4>
+                <h4 className="text-xs font-bold text-slate-705 text-slate-700">{opt.title}</h4>
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
               </div>
               {step2Selected === opt.id && (
-                <Check className="w-4 h-4 text-emerald-500 shrink-0 self-center" />
+                <Check className="w-4 h-4 text-black shrink-0 self-center" />
               )}
             </div>
           ))}
@@ -891,7 +891,7 @@ keywords:
               <input
                 type="text"
                 placeholder="如：中小学生、高净值投资客户、社区居民等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-emerald-500"
+                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
                 value={step2CustomText}
                 onChange={(e) => {
                   setStep2CustomText(e.target.value);
@@ -925,21 +925,21 @@ keywords:
               }}
               className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
                 step3Selected === opt.id 
-                  ? 'border-emerald-500 bg-emerald-50/5' 
+                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
                   : 'border-slate-202 hover:border-slate-300 bg-white'
               }`}
             >
               <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step3Selected === opt.id ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-500'
+                step3Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
               }`}>
                 {opt.id}
               </div>
               <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-700">{opt.title}</h4>
+                <h4 className="text-xs font-bold text-slate-705 text-slate-700">{opt.title}</h4>
                 <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
               </div>
               {step3Selected === opt.id && (
-                <Check className="w-4 h-4 text-emerald-500 shrink-0 self-center" />
+                <Check className="w-4 h-4 text-black shrink-0 self-center" />
               )}
             </div>
           ))}
@@ -950,7 +950,7 @@ keywords:
               <input
                 type="text"
                 placeholder="如：赛博朋克霓虹风格、复古像素游戏机UI等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-emerald-500"
+                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
                 value={step3CustomText}
                 onChange={(e) => {
                   setStep3CustomText(e.target.value);
@@ -997,8 +997,8 @@ keywords:
   const renderClarificationForm = () => {
     if (appState === 'workspace') {
       return (
-        <div className="bg-emerald-50/20 border border-emerald-200/50 rounded-2xl p-4.5 select-none text-left shadow-2xs animate-fade-in w-full">
-          <div className="flex items-center gap-2 mb-2.5 text-xs font-extrabold text-emerald-700">
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4.5 select-none text-left shadow-2xs animate-fade-in w-full">
+          <div className="flex items-center gap-2 mb-2.5 text-xs font-extrabold text-slate-800">
             <span>🎉</span>
             <span>需求澄清已完成且方案已被采用</span>
           </div>
@@ -1009,7 +1009,7 @@ keywords:
               <input
                 type="text"
                 maxLength={30}
-                className="flex-1 max-w-[200px] h-7 bg-white/90 border border-slate-200 rounded px-2 text-xs font-bold text-slate-705 outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-505/10 ml-1 py-0.5 transition-colors"
+                className="flex-1 max-w-[200px] h-7 bg-white/90 border border-slate-200 rounded px-2 text-xs font-bold text-slate-705 outline-none focus:border-black focus:ring-1 focus:ring-slate-900/10 ml-1 py-0.5 transition-colors"
                 value={clarificationForm.appName}
                 onChange={(e) => {
                   setClarificationForm(prev => ({ ...prev, appName: e.target.value }));
@@ -1034,7 +1034,7 @@ keywords:
             className="flex items-center justify-between cursor-pointer select-none"
           >
             <div className="flex items-center gap-2 text-slate-600 text-[10px] font-bold">
-              <span className="animate-spin text-emerald-500 text-[11px] leading-none inline-block">⚙️</span>
+              <span className="animate-spin text-slate-500 text-[11px] leading-none inline-block">⚙️</span>
               <span>深度思考过程 (已诊断)</span>
             </div>
             <span className="text-[10px] text-slate-400 font-mono">
@@ -1047,7 +1047,7 @@ keywords:
               <div>1. 正在解析输入需求「{submittedPromptText}」... OK</div>
               <div>2. 判定核心属性为：<span className="text-slate-800 font-bold">[智能体多机移动导览、室内/高精地图可达点指引]</span></div>
               <div>3. 启动多路交互模板框架：Step 1「场景选择」、Step 2「客群类型规划」、Step 3「艺术配图风格选择」。</div>
-              <div className="text-emerald-600 font-semibold">4. 推荐方案已生成：请在下方互动并确认开发意向细节 🚀</div>
+              <div className="text-slate-820 font-bold">4. 推荐方案已生成：请在下方互动并确认开发意向细节 🚀</div>
             </div>
           )}
         </div>
@@ -1086,7 +1086,7 @@ keywords:
                       className="w-full text-left px-3 py-2 text-[10px] text-slate-600 hover:bg-slate-50 font-semibold flex items-center justify-between"
                     >
                       <span>{item.label}</span>
-                      {clarityStep === item.step && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
+                      {clarityStep === item.step && <span className="w-1.5 h-1.5 rounded-full bg-slate-900"></span>}
                     </button>
                   ))}
                 </div>
@@ -1106,7 +1106,7 @@ keywords:
           <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between shrink-0">
             <button 
               onClick={handleRecommandAction}
-              className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 transition-colors flex items-center gap-1.5 cursor-pointer bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100"
+              className="text-[10px] font-bold text-slate-705 hover:text-black transition-colors flex items-center gap-1.5 cursor-pointer bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-202"
             >
               apply 推荐首选项
             </button>
@@ -1158,17 +1158,17 @@ keywords:
 
             <div className="text-center flex flex-col items-center gap-2 select-none animate-fade-in">
               <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-                不止聊天，搞定一切
+                发个 Offer，捏个新员工
               </h1>
-              <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                请输入您想编排的助理或机器人指令，或者选择一款下方预设的精品模版。
+              <p className="text-xs text-slate-400 max-w-md mx-auto">
+                描述一个职业角色，快速生成带路、对话、调用机器人能力的完整应用方案
               </p>
               
 
             </div>
 
             {/* 大型全能 Prompt 定配框 */}
-            <div className="relative w-full bg-white border border-slate-205 rounded-2xl shadow-xs p-3.5 flex flex-col gap-3 transition-all focus-within:ring-2 focus-within:ring-emerald-500/10 focus-within:border-emerald-500">
+            <div className="relative w-full bg-white border border-slate-205 rounded-2xl shadow-xs p-3.5 flex flex-col gap-3 transition-all focus-within:ring-2 focus-within:ring-slate-800/10 focus-within:border-slate-800">
               {predictionPills && predictionPills.length > 0 && (
                 <div className="absolute left-[48px] -top-11 flex items-center gap-1.5 bg-white border border-slate-200/80 px-2 py-1.5 rounded-xl shadow-[0_6px_16px_rgba(0,0,0,0.06)] z-40 animate-slide-in">
                   {predictionPills.map((p, idx) => (
@@ -1209,10 +1209,10 @@ keywords:
                 {/* 发送/确认按钮 */}
                 <button 
                   onClick={() => handleToClarifying(initialInput || '创建一个AI导览机器人应用')}
-                  className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer transition-all shrink-0 active:scale-95"
+                  className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer transition-colors shrink-0 active:scale-95 border-0 p-0"
                   title="确认并提交"
                 >
-                  ↑
+                  <ArrowUp size={15} strokeWidth={2.5} />
                 </button>
               </div>
             </div>
@@ -1223,16 +1223,16 @@ keywords:
                 <div 
                   key={idx}
                   onClick={() => handleToClarifying(tpl.prompt, tpl.name)}
-                  className="bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-xs rounded-xl p-4 flex flex-col gap-2.5 cursor-pointer transition-all active:scale-[0.98] group"
+                  className="bg-white border border-slate-200 hover:border-slate-800 hover:shadow-xs rounded-xl p-4 flex flex-col gap-2.5 cursor-pointer transition-all active:scale-[0.98] group"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xl">{tpl.icon}</span>
-                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-slate-50 text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-all">
+                    <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-md bg-slate-50 text-slate-400 group-hover:bg-slate-100 group-hover:text-slate-800 transition-all">
                       模版
                     </span>
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-slate-700 mb-1 group-hover:text-emerald-600 transition-colors">
+                    <h3 className="text-xs font-bold text-slate-705 mb-1 group-hover:text-black transition-colors">
                       {tpl.name}
                     </h3>
                     <p className="text-[10px] text-slate-400 leading-relaxed line-clamp-3">

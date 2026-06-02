@@ -13,7 +13,10 @@ import {
   User,
   ChevronLeft,
   Sliders,
-  Bot
+  Bot,
+  Paperclip,
+  Settings,
+  Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChatHistoryRecord, ResourceSection } from '../types';
@@ -143,6 +146,20 @@ const getMetadata = (item: string, categoryId: string) => {
   };
 };
 
+const getCleanDisplayName = (name: string, categoryId: string | null): string => {
+  if (!categoryId) return name;
+  if (categoryId === 'action' && name.endsWith('动作')) {
+    return name.slice(0, -2);
+  }
+  if (categoryId === 'knowledge' && name.endsWith('知识库')) {
+    return name.slice(0, -3);
+  }
+  if (categoryId === 'map' && name.endsWith('地图')) {
+    return name.slice(0, -2);
+  }
+  return name;
+};
+
 export default function LeftPanel({
   chatMode,
   setChatMode,
@@ -173,8 +190,11 @@ export default function LeftPanel({
   onVersionClick
 }: LeftPanelProps) {
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [activePlusCategory, setActivePlusCategory] = useState<string | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 快捷资源弹窗状态
   const [activeCategory, setActiveCategory] = useState<string>('map');
@@ -183,7 +203,7 @@ export default function LeftPanel({
   const [searchQuery, setSearchQuery] = useState('');
   const [manualClose, setManualClose] = useState(false);
   const [lastSlashPos, setLastSlashPos] = useState(-1);
-  const [selectedResource, setSelectedResource] = useState<{ name: string; categoryId: string } | null>(null);
+  const [selectedResources, setSelectedResources] = useState<{ name: string; categoryId: string }[]>([]);
 
   // 1:1 资源分类元数据（不使用 Emoji，使用符合截图 1 风格的描述）
   const autocompleteCategories = [
@@ -237,7 +257,10 @@ export default function LeftPanel({
 
   // 选择资源并将其作为高亮实体注入至对话前缀中（不限于应用资源，同时保持弹窗后退一致性）
   const handleSelectResourceItem = (itemText: string, categoryId: string) => {
-    setSelectedResource({ name: itemText, categoryId });
+    setSelectedResources(prev => {
+      if (prev.some(r => r.name === itemText && r.categoryId === categoryId)) return prev;
+      return [...prev, { name: itemText, categoryId }];
+    });
     const lastSlashIdx = inputText.lastIndexOf('/');
     if (lastSlashIdx !== -1) {
       const prefix = inputText.substring(0, lastSlashIdx);
@@ -245,6 +268,9 @@ export default function LeftPanel({
     }
     setManualClose(true); // 关闭并锁定弹窗
     setShowAutocomplete(false);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 50);
   };
 
   // 模糊匹配搜索全平台的资源列表（全平台调起）
@@ -276,22 +302,28 @@ export default function LeftPanel({
 
   const handleSend = () => {
     const text = inputText.trim();
-    if (!text && !selectedResource) return;
+    if (!text && selectedResources.length === 0) return;
     
     let finalMsg = text;
-    if (selectedResource) {
-      finalMsg = `[${selectedResource.name}] ${text}`;
+    if (selectedResources.length > 0) {
+      const tagsStr = selectedResources.map(r => `[${r.name}]`).join(' ');
+      finalMsg = `${tagsStr} ${text}`;
     }
     
     onSendMessage(finalMsg);
     setInputText('');
-    setSelectedResource(null); // 发送后自动重置绑定的资源，保证交互流畅
+    setSelectedResources([]); // 发送后自动重置绑定的资源，保证交互流畅
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape' && showAutocomplete) {
       e.preventDefault();
       setManualClose(true);
+      return;
+    }
+    // Delete/Backspace tags when input text is empty
+    if ((e.key === 'Backspace' || e.key === 'Delete') && !inputText && selectedResources.length > 0) {
+      setSelectedResources(prev => prev.slice(0, -1));
       return;
     }
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -305,6 +337,25 @@ export default function LeftPanel({
 
   return (
     <aside className={`${isFullWidth ? 'w-full max-w-2xl border-x' : 'w-[450px] border-r'} shrink-0 border-[#e6e6eb] flex flex-col bg-white h-full relative z-10 transition-all duration-325 select-none`}>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files && files.length > 0) {
+            setSelectedResources(prev => {
+              if (prev.some(r => r.name === files[0].name && r.categoryId === 'file')) return prev;
+              return [...prev, { name: files[0].name, categoryId: 'file' }];
+            });
+            // 清除之前的 '/' 字符
+            const lastSlashIdx = inputText.lastIndexOf('/');
+            if (lastSlashIdx !== -1) {
+              setInputText(inputText.substring(0, lastSlashIdx));
+            }
+          }
+        }} 
+      />
       {/* 滚动交互区域 */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4.5 py-5 flex flex-col gap-4">
         {chatMode === 'chat' ? (
@@ -469,7 +520,7 @@ export default function LeftPanel({
                                 {getCategoryIcon(categoryId, 14, "text-slate-400 group-hover:scale-110 transition-transform duration-200 shrink-0")}
                                 <div className="flex-1 min-w-0">
                                   <span className="text-xs font-bold text-slate-800 block truncate">
-                                    {item}
+                                    {getCleanDisplayName(item, categoryId)}
                                   </span>
                                 </div>
                               </div>
@@ -479,9 +530,6 @@ export default function LeftPanel({
                                 </span>
                                 <span className="text-[9px] font-bold text-slate-450 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded scale-90 select-none whitespace-nowrap">
                                   {categoryId === 'map' ? '地图' : categoryId === 'knowledge' ? '知识库' : categoryId === 'action' ? '动作' : categoryId === 'skill' ? '接口' : '人设'}
-                                </span>
-                                <span className="text-[9.5px] font-mono font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                  选用 ↩
                                 </span>
                               </div>
                             </button>
@@ -501,18 +549,55 @@ export default function LeftPanel({
                     {autocompleteLevel === 1 ? (
                       /* ============ 一级浮窗 (配合指令，去掉顶端灰色大标题栏，通透平铺五大类) ============ */
                       <div className="flex flex-col h-full bg-white">
-                        {/* 极简化小提示，符合去掉标题要求 */}
-                        <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100 shrink-0 select-none">
-                          <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">
-                            系统注册及可编配资源
-                          </span>
-                          <span className="text-[9px] text-slate-400">
-                            键入字符直接搜索
-                          </span>
-                        </div>
-
                         {/* Category Rows with Simple outline icons */}
                         <div className="flex-1 overflow-y-auto divide-y divide-[#ececf2]/60 p-1 flex flex-col">
+                          {/* 📎 添加附件 (首选项，亮色背景/轻微激活感) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualClose(true);
+                              fileInputRef.current?.click();
+                            }}
+                            className="w-full text-left px-4 py-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl transition-all flex items-center gap-3.5 group cursor-pointer border-0"
+                          >
+                            <Paperclip size={14} className="text-slate-500 shrink-0" />
+                            <div className="flex-1 min-w-0 flex items-center justify-between gap-1">
+                              <span className="text-[12px] font-extrabold text-slate-800 tracking-wide font-sans shrink-0">
+                                添加附件
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* 🛠️ 创建skill */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualClose(true);
+                              setSelectedResources(prev => {
+                                if (prev.some(r => r.name === 'create-skill' && r.categoryId === 'skill')) return prev;
+                                return [...prev, { name: 'create-skill', categoryId: 'skill' }];
+                              });
+                              // 移除输入框中的 '/' 触发词
+                              const lastSlashIdx = inputText.lastIndexOf('/');
+                              if (lastSlashIdx !== -1) {
+                                setInputText(inputText.substring(0, lastSlashIdx));
+                              } else {
+                                setInputText('');
+                              }
+                              setTimeout(() => {
+                                textareaRef.current?.focus();
+                              }, 50);
+                            }}
+                            className="w-full text-left px-4 py-3 bg-transparent hover:bg-slate-50/80 rounded-xl transition-all flex items-center gap-3.5 group cursor-pointer border-0"
+                          >
+                            <Wrench size={14} className="text-slate-500 shrink-0" />
+                            <div className="flex-1 min-w-0 flex items-center justify-between gap-1">
+                              <span className="text-[12px] font-extrabold text-slate-800 tracking-wide font-sans shrink-0">
+                                创建skill
+                              </span>
+                            </div>
+                          </button>
+
                           {autocompleteCategories.map((cat) => (
                             <button
                               key={cat.id}
@@ -532,9 +617,6 @@ export default function LeftPanel({
                                   {cat.desc}
                                 </span>
                               </div>
-                              <span className="text-[10px] font-mono font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity pl-2 whitespace-nowrap">
-                                展开列表 ➔
-                              </span>
                             </button>
                           ))}
                         </div>
@@ -586,7 +668,7 @@ export default function LeftPanel({
                                         {getCategoryIcon(activeCategory, 14, "text-slate-400 group-hover:scale-110 transition-transform duration-200 shrink-0")}
                                         <div className="flex-1 min-w-0">
                                           <span className="text-xs font-bold text-slate-800 block truncate">
-                                            {item}
+                                            {getCleanDisplayName(item, activeCategory)}
                                           </span>
                                         </div>
                                       </div>
@@ -594,9 +676,7 @@ export default function LeftPanel({
                                         <span className="text-[10px] text-slate-450 font-normal truncate max-w-[180px] text-right">
                                           {meta.desc}
                                         </span>
-                                        <span className="text-[9.5px] font-mono font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap bg-blue-50 px-2 py-0.5 rounded border border-blue-105">
-                                          确定使用 ↩
-                                        </span>
+
                                       </div>
                                     </button>
                                   );
@@ -625,34 +705,41 @@ export default function LeftPanel({
             )}
           </AnimatePresence>
 
-          {/* 选中资源与输入框在同一行（效果完美复原截图 2 氛围，光标紧跟其后不换行，文字稍大） */}
-          <div className="flex flex-wrap items-center gap-2 w-full min-h-[38px]">
-            {selectedResource && (
-              <div className="inline-flex items-center gap-1.5 bg-[#f0f5ff] hover:bg-[#e4edff] border border-[#d2e2ff] rounded-lg px-2.5 py-1 select-none animate-fade-in shrink-0">
-                <span className="text-[13px] font-extrabold text-[#1a73e8] tracking-wide select-none">
-                  {selectedResource.name}
+          {/* 选中资源与输入区域（完美同一行展示高保真体验，当多于一行或添加多个且空间不足时自动优雅折行，维持光标和文字的高可读性） */}
+          <div 
+            onClick={() => textareaRef.current?.focus()}
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 w-full cursor-text"
+          >
+            {selectedResources.length > 0 && selectedResources.map((res, idx) => (
+              <div key={idx} className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 select-none animate-fade-in shrink-0 border ${
+                res.categoryId === 'file'
+                  ? 'bg-slate-100/90 border-slate-200 text-slate-705 font-bold'
+                  : 'bg-slate-50 border-slate-250 text-slate-800 font-extrabold'
+              }`}>
+                <span className="text-[12px] tracking-wide select-none flex items-center gap-1.5">
+                  {res.categoryId === 'file' ? (
+                    <Paperclip size={11} className="text-slate-550 shrink-0" />
+                  ) : res.categoryId === 'skill' && res.name === 'create-skill' ? (
+                    <Wrench size={11} className="text-slate-600 shrink-0" />
+                  ) : (
+                    getCategoryIcon(res.categoryId, 11, "text-slate-500 shrink-0")
+                  )}
+                  <span>{getCleanDisplayName(res.name, res.categoryId)}</span>
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedResource(null)}
-                  className="w-4 h-4 rounded-full bg-[#d2e2ff]/70 hover:bg-red-500 hover:text-white text-[#1a73e8] font-black text-[9px] flex items-center justify-center border-0 p-0 cursor-pointer transition-colors"
-                  title="清除资源绑定"
-                >
-                  ✕
-                </button>
               </div>
-            )}
+            ))}
 
             <textarea 
+              ref={textareaRef}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onInput={() => {}}
               onKeyDown={handleKeyDown}
-              placeholder={selectedResource ? "" : "输入对话或指令..."}
-              className={`flex-1 min-w-[120px] h-8 border-0 m-0 p-0 text-sm leading-relaxed outline-none resize-none bg-transparent caret-blue-600 text-slate-800 placeholder-slate-400 ${
+              placeholder="输入对话或指令..."
+              className={`flex-1 min-w-[120px] max-h-[70px] border-0 m-0 p-0 text-sm leading-relaxed outline-none resize-none bg-transparent caret-blue-600 text-slate-800 placeholder-slate-400 ${
                 showTokenPreview ? 'text-transparent' : ''
               }`}
-              style={{ minHeight: '32px', paddingTop: '4px' }}
+              style={{ minHeight: '24px', height: '24px', paddingTop: '2px' }}
             />
           </div>
 
@@ -665,47 +752,162 @@ export default function LeftPanel({
             </div>
           )}
 
-          {/* Agent 附件上传二级子菜单 */}
+          {/* Agent 附件上传二级子面板 (极度精致 1:1 复刻级联面板) */}
           {showAttachmentMenu && (
-            <div className="absolute left-3.5 bottom-15 w-48 bg-white border border-[#e6e6eb] rounded-2xl shadow-[0_14px_30px_rgba(0,0,0,0.12)] p-2 z-20 flex flex-col gap-0.5 animate-fade-in">
-              <button 
-                onClick={() => {
-                  setShowAttachmentMenu(false);
-                  onOpenAttachmentDialog('script');
-                }}
-                className="h-10 border-0 rounded-xl bg-transparent hover:bg-slate-50 flex items-center gap-2.5 px-3.5 text-left text-sm font-semibold text-[#1d1d1f] cursor-pointer transition-colors w-full"
-              >
-                <FileText size={15} className="text-slate-500" />
-                <span>剧本文件</span>
-              </button>
-              <button 
-                onClick={() => {
-                  setShowAttachmentMenu(false);
-                  onOpenAttachmentDialog('skill');
-                }}
-                className="h-10 border-0 rounded-xl bg-transparent hover:bg-slate-50 flex items-center gap-2.5 px-3.5 text-left text-sm font-semibold text-[#1d1d1f] cursor-pointer transition-colors w-full"
-              >
-                <Zap size={15} className="text-[#ff9800]" />
-                <span>技能文件</span>
-              </button>
+            <div className="absolute left-3.5 bottom-15 flex items-end select-none animate-fade-in z-50 pointer-events-auto">
+              {/* 主菜单 (左边分类) */}
+              <div className="w-[130px] bg-white border border-[#e6e6eb]/80 rounded-2xl shadow-[0_12px_28px_rgba(0,0,0,0.11)] p-1.5 flex flex-col gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActivePlusCategory(activePlusCategory === 'skill' ? null : 'skill')}
+                  className={`h-9 border-0 rounded-xl flex items-center justify-between px-2.5 text-left text-xs font-extrabold cursor-pointer transition-all duration-150 w-full ${
+                    activePlusCategory === 'skill' ? 'bg-slate-50 text-blue-600 scale-[1.02]' : 'bg-transparent text-[#1d1d1f] hover:bg-slate-50/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Cpu size={14} className={activePlusCategory === 'skill' ? "text-blue-600 shrink-0" : "text-slate-500 shrink-0"} />
+                    <span>技能库</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400/85">{activePlusCategory === 'skill' ? '◂' : '❯'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePlusCategory(activePlusCategory === 'knowledge' ? null : 'knowledge')}
+                  className={`h-9 border-0 rounded-xl flex items-center justify-between px-2.5 text-left text-xs font-extrabold cursor-pointer transition-all duration-150 w-full ${
+                    activePlusCategory === 'knowledge' ? 'bg-slate-50 text-blue-600 scale-[1.02]' : 'bg-transparent text-[#1d1d1f] hover:bg-slate-50/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <BookOpen size={14} className={activePlusCategory === 'knowledge' ? "text-blue-600 shrink-0" : "text-slate-500 shrink-0"} />
+                    <span>知识库</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400/85">{activePlusCategory === 'knowledge' ? '◂' : '❯'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePlusCategory(activePlusCategory === 'action' ? null : 'action')}
+                  className={`h-9 border-0 rounded-xl flex items-center justify-between px-2.5 text-left text-xs font-extrabold cursor-pointer transition-all duration-150 w-full ${
+                    activePlusCategory === 'action' ? 'bg-slate-50 text-blue-600 scale-[1.02]' : 'bg-transparent text-[#1d1d1f] hover:bg-slate-50/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Activity size={14} className={activePlusCategory === 'action' ? "text-blue-600 shrink-0" : "text-slate-500 shrink-0"} />
+                    <span>动作库</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400/85">{activePlusCategory === 'action' ? '◂' : '❯'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePlusCategory(activePlusCategory === 'map' ? null : 'map')}
+                  className={`h-9 border-0 rounded-xl flex items-center justify-between px-2.5 text-left text-xs font-extrabold cursor-pointer transition-all duration-150 w-full ${
+                    activePlusCategory === 'map' ? 'bg-slate-50 text-blue-600 scale-[1.02]' : 'bg-transparent text-[#1d1d1f] hover:bg-slate-50/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Map size={14} className={activePlusCategory === 'map' ? "text-blue-600 shrink-0" : "text-slate-500 shrink-0"} />
+                    <span>地图库</span>
+                  </div>
+                  <span className="text-[9px] text-slate-400/85">{activePlusCategory === 'map' ? '◂' : '❯'}</span>
+                </button>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAttachmentMenu(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="h-9 border-0 rounded-xl bg-transparent hover:bg-slate-50 flex items-center gap-2 px-2.5 text-left text-xs font-extrabold text-[#1d1d1f] cursor-pointer transition-all w-full"
+                >
+                  <Paperclip size={14} className="text-slate-550 shrink-0" />
+                  <span>添加附件</span>
+                </button>
+              </div>
+
+              {/* 二级菜单 (在旁边向右平铺展开) */}
+              {activePlusCategory && (
+                <div 
+                  className="w-[260px] bg-white border border-[#e6e6eb]/80 rounded-2xl shadow-[0_12px_28px_rgba(0,0,0,0.11)] p-1.5 ml-1 flex flex-col animate-fade-in relative"
+                  style={{ maxHeight: '230px' }}
+                >
+                  <div className="flex-1 overflow-y-auto flex flex-col gap-0.5 max-h-[175px] pr-0.5">
+                    {(PLATFORM_ALL_RESOURCES[activePlusCategory] || []).map((item) => {
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() => {
+                            setSelectedResources(prev => {
+                              if (prev.some(r => r.name === item && r.categoryId === activePlusCategory)) return prev;
+                              return [...prev, { name: item, categoryId: activePlusCategory }];
+                            });
+                            setShowAttachmentMenu(false);
+                            setTimeout(() => {
+                              textareaRef.current?.focus();
+                            }, 50);
+                          }}
+                          className="w-full h-9 border-0 bg-transparent hover:bg-slate-50 flex items-center gap-2 px-2.5 text-left text-xs font-extrabold text-[#1d1d1f] hover:bg-slate-50 cursor-pointer transition-all duration-150"
+                        >
+                          <span className="shrink-0 transition-colors text-slate-500">
+                            {getCategoryIcon(activePlusCategory, 14, "text-slate-500 shrink-0")}
+                          </span>
+                          <span className="truncate flex-1">
+                            {getCleanDisplayName(item, activePlusCategory)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* 二级菜单底部管理，居左，去颜色，icon+管理 */}
+                  <div className="mt-1.5 pt-1.5 border-t border-slate-100 flex items-center shrink-0 w-full px-1">
+                    <button
+                      type="button"
+                      className="w-full h-8 border-0 bg-transparent hover:bg-slate-50 flex items-center justify-start gap-2 px-1.5 rounded-xl text-xs font-extrabold text-[#1d1d1f] hover:bg-slate-50 cursor-pointer select-none transition-all"
+                    >
+                      <Settings size={14} className="text-slate-500 shrink-0" />
+                      <span>管理{activePlusCategory === 'skill' ? '技能' : activePlusCategory === 'knowledge' ? '知识库' : activePlusCategory === 'action' ? '动作' : '地图'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {/* 状态动作栏 */}
           <div className="flex items-center justify-between mt-3">
-            <button 
-              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-              className="w-9 h-9 border-0 rounded-xl bg-[#ececf2] hover:bg-slate-200/80 text-[#1b1b1f] flex items-center justify-center font-bold text-lg cursor-pointer transition-colors"
-              aria-label="添加附件"
-            >
-              <Plus size={16} />
-            </button>
+            <div className="relative group">
+              {/* Tooltip: 添加文件等 / */}
+              <div className="absolute bottom-11 left-1.5 mb-1.5 hidden group-hover:flex items-center gap-2 bg-white border border-slate-200/90 px-3 py-1.5 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.08)] z-40 animate-fade-in whitespace-nowrap select-none">
+                <span className="text-[11.5px] font-bold text-slate-705">添加文件等</span>
+                <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-[#f0f2f5] text-slate-500 text-[10px] font-medium font-sans">
+                  /
+                </span>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  setShowAttachmentMenu(!showAttachmentMenu);
+                  if (!showAttachmentMenu) {
+                    setActivePlusCategory(null); // 打开时默认折叠二级，符合点击 1 级后再展示 2 级的要求
+                  }
+                }}
+                className="w-9 h-9 border-0 rounded-full bg-[#f0f2f5] hover:bg-[#e4e6eb] text-slate-500 hover:text-slate-700 flex items-center justify-center font-bold text-lg cursor-pointer transition-colors"
+                aria-label="添加附件"
+              >
+                <Plus size={16} strokeWidth={2.2} />
+              </button>
+            </div>
             <button 
               onClick={handleSend}
-              className="w-9 h-9 border-0 rounded-xl bg-[#2979ff] hover:bg-[#226ce0] text-white flex items-center justify-center shadow-md shadow-[#2979ff]/28 cursor-pointer transition-all"
+              className="w-8 h-8 rounded-full bg-black hover:bg-slate-800 text-white flex items-center justify-center cursor-pointer transition-colors border-0 p-0 shadow-xs"
               aria-label="发送"
             >
-              <ArrowUp size={16} />
+              <ArrowUp size={15} strokeWidth={2.5} />
             </button>
           </div>
         </div>

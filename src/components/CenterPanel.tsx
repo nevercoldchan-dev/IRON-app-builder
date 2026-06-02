@@ -13,7 +13,21 @@ import {
   AudioLines,
   Compass,
   CheckCircle2,
-  CircleDot
+  CircleDot,
+  Smile,
+  Zap,
+  Heading,
+  Bold,
+  Italic,
+  Strikethrough,
+  Link,
+  List,
+  ListOrdered,
+  ListTodo,
+  Send,
+  Minus,
+  Code,
+  Code2
 } from 'lucide-react';
 import { ResourceSection } from '../types';
 
@@ -29,8 +43,8 @@ export const PRESET_ACTIONS = [
 ];
 
 interface CenterPanelProps {
-  currentScriptView: 'welcomeFlow' | 'companyIntro' | 'visitorReception';
-  setCurrentScriptView: (view: 'welcomeFlow' | 'companyIntro' | 'visitorReception') => void;
+  currentScriptView: string;
+  setCurrentScriptView: (view: string) => void;
   personaName: string;
   setPersonaName: (name: string) => void;
   toneStyle: string;
@@ -347,6 +361,271 @@ keywords:
   const [isCopied, setIsCopied] = useState(false);
   const [isJsonEditing, setIsJsonEditing] = useState(false);
 
+  // 行为剧本相关的新状态
+  const [scriptEditMode, setScriptEditMode] = useState<'edit' | 'preview'>('edit'); // 默认展示可修改的编辑状态
+  const [showInsertModal, setShowInsertModal] = useState(false);
+  const [showActionDropdown, setShowActionDropdown] = useState(false);
+  const [showSkillDropdown, setShowSkillDropdown] = useState(false);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  // 动作和技能的预设描述，用于快捷浮层/二级气泡展示与插入
+  const INS_ACTIONS = [
+    { id: 'wave_hand', label: '挥手欢迎', code: 'inte.hri.special_pose(action="wave_hand")', desc: '缓慢抬起双臂致意，展现人形智能体亲和感' },
+    { id: 'point_front', label: '指引前方', code: 'inte.hri.special_pose(action="point_front")', desc: '伸出单手侧身向前，引导参观建议路径' },
+    { id: 'screen_show', label: '屏幕展示', code: 'inte.hri.special_pose(action="screen_show")', desc: '配合多媒体演示做擦拂手势指示对应内容' },
+    { id: 'talk_gesture', label: '讲解手势', code: 'inte.hri.special_pose(action="talk_gesture")', desc: '胸前小幅度摆动手部，传达讲解情感温度' },
+    { id: 'bow_bowing', label: '送别致意', code: 'inte.hri.special_pose(action="bow_bowing")', desc: '微微礼貌欠身躬行致以离场感谢' },
+    { id: 'nod', label: '点头肯定', code: 'inte.hri.special_pose(action="nod")', desc: '听赏期间轻快点头两次表示认同和接收' },
+    { id: 'thinking', label: '抱臂思考', code: 'inte.hri.special_pose(action="thinking")', desc: '双臂交叠，头部微偏，展示生动思考表情' },
+    { id: 'dance', label: '极客跳舞', code: 'inte.hri.special_pose(action="dance")', desc: '伴随迎宾背景音乐进行趣味拟人机械舞律动' },
+  ];
+
+  const INS_SKILLS = [
+    { id: 'post_print', label: '物联打印', code: 'iot.post_print_job()', desc: '调用物理打印机，冲印画册相纸或参观凭证' },
+    { id: 'query_calendar', label: '活动日历', code: 'iot.query_calendar_events()', desc: '查询当日园区班次特展，更新多轮对话排期' },
+    { id: 'trigger_screen', label: '大屏播放', code: 'iot.trigger_screen()', desc: '联动本地物理屏幕，自动触发宣传视频等多媒体展示' },
+    { id: 'query_nearby', label: '位置检索', code: 'iot.query_nearby_facilities()', desc: '调用高精导航测算大堂及周边设施，智能最短路线指引' },
+  ];
+
+  const insertTextAtCursor = (textToInsert: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      // 如果没有聚焦，直接拼在当前正在编辑文档的内容尾端
+      const currentVal = docContents[currentScriptView] || '';
+      const newVal = currentVal + (currentVal ? '\n' : '') + textToInsert;
+      if (propSetDocContents) {
+        propSetDocContents(prev => ({ ...prev, [currentScriptView]: newVal }));
+      }
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const before = text.substring(0, start);
+    const after = text.substring(end, text.length);
+    const newValue = before + textToInsert + after;
+    
+    if (propSetDocContents) {
+      propSetDocContents(prev => ({ ...prev, [currentScriptView]: newValue }));
+    }
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + textToInsert.length;
+    }, 50);
+  };
+
+  // 🆕 斜杠快捷菜单 (Slash menu) 相关状态与处理
+  const [slashMenu, setSlashMenu] = useState<{
+    isOpen: boolean;
+    searchQuery: string;
+    cursorPosition: number;
+  } | null>(null);
+
+  const [slashActiveCategory, setSlashActiveCategory] = useState<'action' | 'skill'>('action');
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+
+  // 动作库和技能库
+  const filteredActions = React.useMemo(() => {
+    const query = slashMenu?.searchQuery.toLowerCase().trim() || '';
+    if (!query) return INS_ACTIONS.map(a => ({ ...a, type: 'action' as const }));
+    return INS_ACTIONS.filter(item => 
+      item.label.toLowerCase().includes(query) || 
+      item.code.toLowerCase().includes(query)
+    ).map(a => ({ ...a, type: 'action' as const }));
+  }, [slashMenu?.searchQuery, INS_ACTIONS]);
+
+  const filteredSkills = React.useMemo(() => {
+    const query = slashMenu?.searchQuery.toLowerCase().trim() || '';
+    if (!query) return INS_SKILLS.map(s => ({ ...s, type: 'skill' as const }));
+    return INS_SKILLS.filter(item => 
+      item.label.toLowerCase().includes(query) || 
+      item.code.toLowerCase().includes(query)
+    ).map(s => ({ ...s, type: 'skill' as const }));
+  }, [slashMenu?.searchQuery, INS_SKILLS]);
+
+  const activeLevel2Items = React.useMemo(() => {
+    return slashActiveCategory === 'action' ? filteredActions : filteredSkills;
+  }, [slashActiveCategory, filteredActions, filteredSkills]);
+
+  // 当搜索框输入变化或分类切换时，将高亮项复位为第一项
+  useEffect(() => {
+    setSlashSelectedIndex(0);
+  }, [slashMenu?.searchQuery, slashActiveCategory]);
+
+  const handleSelectSlashItem = (item: { code: string }) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !slashMenu) return;
+
+    const { cursorPosition } = slashMenu;
+    const text = textarea.value;
+    const currentSelectionStart = textarea.selectionStart;
+
+    // 替换从 / 开始到现在输入的所有内容
+    const textBefore = text.substring(0, cursorPosition);
+    const textAfter = text.substring(currentSelectionStart);
+
+    const textToInsert = `\`${item.code}\``;
+    const newValue = textBefore + textToInsert + textAfter;
+
+    if (propSetDocContents) {
+      propSetDocContents(prev => ({ ...prev, [currentScriptView]: newValue }));
+    }
+
+    setSlashMenu(null);
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newCursor = cursorPosition + textToInsert.length;
+      textarea.selectionStart = textarea.selectionEnd = newCursor;
+    }, 50);
+  };
+
+  const getCaretCoordinates = () => {
+    const textarea = textareaRef.current;
+    if (!textarea || !slashMenu) return { top: 20, left: 20 };
+
+    const val = textarea.value;
+    const cursor = slashMenu.cursorPosition;
+    const textBefore = val.substring(0, cursor);
+
+    const lines = textBefore.split('\n');
+    const rowIndex = lines.length - 1;
+    const lastLineText = lines[rowIndex];
+
+    const textareaWidth = textarea.clientWidth || 500;
+    const paddingX = 40; 
+    const charWidth = 7.1; 
+    const lineHeight = 19.5; 
+
+    const maxChars = Math.max(15, Math.floor((textareaWidth - paddingX) / charWidth));
+
+    let totalRows = 0;
+    for (let i = 0; i < rowIndex; i++) {
+      const len = lines[i].length;
+      totalRows += 1 + Math.floor(len / maxChars);
+    }
+
+    const currentLineLen = lastLineText.length;
+    totalRows += Math.floor(currentLineLen / maxChars);
+    const colPosition = currentLineLen % maxChars;
+
+    const scrollTop = textarea.scrollTop || 0;
+
+    let calculatedTop = 20 + (totalRows * lineHeight) - scrollTop;
+    let calculatedLeft = 20 + (colPosition * charWidth);
+
+    const menuWidth = 240; 
+    const menuHeight = 160; 
+
+    const textareaHeight = textarea.clientHeight || 300;
+
+    // Check bottom boundary & wrap coordinates
+    if (calculatedLeft + menuWidth > textareaWidth - 20) {
+      calculatedLeft = Math.max(20, textareaWidth - menuWidth - 30);
+    }
+
+    if (calculatedTop + menuHeight > textareaHeight - 15) {
+      if (calculatedTop - menuHeight - 10 > 10) {
+        calculatedTop = calculatedTop - menuHeight - 15;
+      } else {
+        calculatedTop = Math.max(10, textareaHeight - menuHeight - 20);
+      }
+    }
+
+    return {
+      top: Math.max(10, calculatedTop),
+      left: Math.max(15, calculatedLeft)
+    };
+  };
+
+  const handleAddNewScript = () => {
+    const newKey = `customScript_${Date.now()}`;
+    const defaultValue = `---
+name: 自定义剧本
+desc: 自定义流程步骤与安防、技能联控说明
+---
+
+### 1. 新设立流程步骤 (Step)
+- **触发**: 系统或智能体检测到特定事件。
+- **动作**:
+  - \`inte.hri.special_pose(action="wave_hand")\`
+  - \`inte.hri.say_something(text="您好，请问有什么可以帮助您的？")\`
+`;
+    if (propSetDocContents) {
+      propSetDocContents(prev => ({
+        ...prev,
+        [newKey]: defaultValue
+      }));
+    }
+    setCurrentScriptView(newKey);
+    setScriptEditMode('edit');
+  };
+
+  const handleDeleteScript = (keyToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (propSetDocContents) {
+      propSetDocContents(prev => {
+        const copy = { ...prev };
+        delete copy[keyToDelete];
+        
+        // 切换到现有的另外一个剧本
+        const remainingKeys = Object.keys(copy);
+        if (remainingKeys.length > 0) {
+          if (currentScriptView === keyToDelete) {
+            setCurrentScriptView(remainingKeys[0]);
+          }
+        } else {
+          // 如果全部被删完了，极佳的处理方式是自动生成一份新的默认剧本
+          const fallbackKey = 'welcomeFlow';
+          copy[fallbackKey] = `---\nname: 迎宾流程\ndesc: 参观机器人进行多模态迎宾\n---\n\n### 1. 迎宾致意\n- **动作**:\n  - \`inte.hri.special_pose(action="wave_hand")\`\n`;
+          setCurrentScriptView(fallbackKey);
+        }
+        return copy;
+      });
+    }
+  };
+
+  const getScriptName = (key: string, content: string) => {
+    const r = /^\s*name:\s*(.*?)\s*$/m;
+    const match = content.match(r);
+    let displayName = '';
+    
+    if (match && match[1]) {
+      displayName = match[1].trim();
+    } else {
+      if (key === 'welcomeFlow') displayName = '迎宾流程';
+      else if (key === 'companyIntro') displayName = '公司介绍';
+      else if (key === 'visitorReception') displayName = '访客接待';
+      else displayName = '自定义剧本';
+    }
+
+    // 将默认行为剧本的英文名/标志符转换为中文
+    if (
+      displayName === 'welcome_flow' || 
+      displayName === 'welcomeFlow' || 
+      key === 'welcomeFlow'
+    ) {
+      return '迎宾流程';
+    }
+    if (
+      displayName === 'company_intro' || 
+      displayName === 'companyIntro' || 
+      key === 'companyIntro'
+    ) {
+      return '公司介绍';
+    }
+    if (
+      displayName === 'visitor_reception' || 
+      displayName === 'visitorReception' || 
+      key === 'visitorReception'
+    ) {
+      return '访客接待';
+    }
+    
+    return displayName;
+  };
+
   // 原位动作点击编辑浮窗状态
   const [activeActionEdit, setActiveActionEdit] = useState<{
     type: 'script' | 'json';
@@ -601,7 +880,15 @@ keywords:
     );
   };
 
-  const renderScriptContent = (text: string) => {
+  const renderScriptContent = (text: string | undefined | null) => {
+    if (!text) {
+      return (
+        <div className="flex flex-col items-center justify-center text-slate-400 py-16 gap-2 select-none">
+          <p className="text-xs">📂 当前剧本无内容或已被清空</p>
+          <p className="text-[10px] text-slate-405">请切换或点击 ➕ 创建新剧本</p>
+        </div>
+      );
+    }
     const lines = text.split('\n');
     return (
       <div className="flex flex-col gap-2.5 font-sans justify-start select-text leading-relaxed">
@@ -909,7 +1196,7 @@ keywords:
         {/* ================== 统一编排工作台 (Behavior Script & Task JSON Tabs) ================== */}
         <section id="integrated-scheduler" className="bg-white border border-[#e6e6eb] rounded-2.5xl shadow-[0_1px_3px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col flex-1 min-h-0">
           {/* Main Integrated Tab Switcher Header */}
-          <div className="px-5 py-4 border-b border-[#f4f4f7] flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white shrink-0 font-sans">
+          <div className="px-5 pt-3.5 pb-2 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white shrink-0 font-sans">
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] border border-[#e6e6eb] self-start font-sans">
               <button
                 onClick={() => setActivePanelTab('persona')}
@@ -917,7 +1204,7 @@ keywords:
                   activePanelTab === 'persona' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>🤖</span> 人设 (Persona)
+                <span>🤖</span> 人设
               </button>
               <button
                 onClick={() => setActivePanelTab('script')}
@@ -925,7 +1212,7 @@ keywords:
                   activePanelTab === 'script' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>📜</span> 行为剧本 (Script)
+                <span>📜</span> 行为剧本
               </button>
               <button
                 onClick={() => setActivePanelTab('task')}
@@ -933,60 +1220,457 @@ keywords:
                   activePanelTab === 'task' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>📋</span> 任务书 (JSON)
+                <span>📋</span> 任务书
               </button>
             </div>
           </div>
 
           {/* Conditional Rendering of Panel Contents */}
           {activePanelTab === 'script' ? (
-            <div className="p-5 flex flex-col gap-4 flex-1 min-h-0 overflow-hidden font-sans">
+            <div className="px-5 pb-4 pt-1 flex flex-col gap-3.5 flex-1 min-h-0 overflow-hidden font-sans relative">
               
-              {/* 子级别指示与层级关系切换 */}
-              <div className="flex flex-col gap-2 shrink-0 font-sans">
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] border border-[#e6e6eb] self-start font-sans">
+              {/* 控制：行为剧本 Tabs (包括新增/删除) + 编辑与预览切换 */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 font-sans border-b border-slate-100 pb-2">
+                
+                {/* 左边：多剧本 Tabs 的动态排布区 */}
+                <div className="flex items-center gap-1.5 bg-slate-105 p-1 rounded-xl shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.03)] border border-[#e6e6eb] flex-wrap max-w-full">
+                  {Object.keys(docContents).map((key, index) => {
+                    const isPreset = key === 'welcomeFlow' || key === 'companyIntro' || key === 'visitorReception';
+                    const isActive = currentScriptView === key;
+                    const displayName = getScriptName(key, docContents[key] || '');
+                    
+                    return (
+                      <div 
+                        key={key}
+                        onClick={() => setCurrentScriptView(key)}
+                        className={`h-7 px-3 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1.5 select-none relative ${
+                          isActive 
+                            ? 'bg-[#1d1d1f] text-white shadow-xs border border-transparent font-extrabold shadow-[0_2px_4px_rgba(0,0,0,0.15)]' 
+                            : 'bg-transparent text-slate-550 hover:bg-white/50 hover:text-slate-800'
+                        }`}
+                      >
+                        <span className="truncate max-w-[95px]">{index + 1}. {displayName}</span>
+                        
+                        {/* 允许删除每一个行为剧本 */}
+                        <span 
+                          onClick={(e) => handleDeleteScript(key, e)}
+                          className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-all font-extrabold text-[8px] leading-none shrink-0 ${
+                            isActive
+                              ? 'bg-white/20 hover:bg-red-500 hover:text-white text-white/80'
+                              : 'bg-slate-200/50 hover:bg-red-500 hover:text-white text-slate-500'
+                          }`}
+                          title="删除此剧本"
+                        >
+                          ×
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* 🆕 新增剧本按钮 */}
                   <button 
-                    onClick={() => setCurrentScriptView('welcomeFlow')}
-                    className={`h-7.5 px-3.5 rounded-lg border-0 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 font-sans ${
-                      currentScriptView === 'welcomeFlow' ? 'bg-white text-[#1d1d1f] shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
-                    }`}
+                    onClick={handleAddNewScript}
+                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-slate-550 hover:bg-white hover:text-black flex items-center justify-center transition-all cursor-pointer font-bold text-xs"
+                    title="可在行为剧本中新增一个空白 markdown 白皮书"
                   >
-                    迎宾流程
-                  </button>
-                  <button 
-                    onClick={() => setCurrentScriptView('companyIntro')}
-                    className={`h-7.5 px-3.5 rounded-lg border-0 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 font-sans ${
-                      currentScriptView === 'companyIntro' ? 'bg-white text-[#1d1d1f] shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
-                    }`}
-                  >
-                    公司介绍
-                  </button>
-                  <button 
-                    onClick={() => setCurrentScriptView('visitorReception')}
-                    className={`h-7.5 px-3.5 rounded-lg border-0 text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 font-sans ${
-                      currentScriptView === 'visitorReception' ? 'bg-white text-[#1d1d1f] shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
-                    }`}
-                  >
-                    访客接待
+                    ➕
                   </button>
                 </div>
+
               </div>
 
-              {/* 剧本原文展示区 - 设定 flex-1 min-h-0 自动拉伸填充 */}
-              <div className="flex-1 min-h-0 border border-[#e6e6eb] rounded-2xl bg-[#fafafc] p-6 font-mono text-xs leading-relaxed text-slate-705 select-text overflow-y-auto shadow-inner">
-                {renderScriptContent(docContents[currentScriptView] || docContents['welcomeFlow'])}
+              {/* 核心展示/编辑工作台 - 填充所有剩余高度 */}
+              <div className="flex-1 min-h-0 flex flex-col gap-2.5">
+                {scriptEditMode === 'edit' ? (
+                  /* ================== A. 富文本编辑区 ================== */
+                  <div className="flex-1 min-h-0 flex flex-col gap-2 relative">
+                    
+                    {/* 富文本插入工具栏 - 极简线性风格 */}
+                    <div className="flex flex-wrap items-center justify-start gap-1 bg-white border border-[#e6e6eb] rounded-xl p-1 select-none relative shrink-0">
+                      {/* Left: Dropdowns & Formatting buttons with linear icons */}
+                      <div className="flex flex-wrap items-center gap-1 relative">
+                        
+                        {/* 肢体动作 Dropdown */}
+                        <div className="relative">
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowActionDropdown(!showActionDropdown);
+                              setShowSkillDropdown(false);
+                            }}
+                            className="h-7 px-2 rounded-lg text-[11px] font-semibold text-slate-650 hover:text-black hover:bg-slate-100 flex items-center gap-1 transition-colors border-0 bg-transparent cursor-pointer"
+                            title="肢体动作"
+                          >
+                            <Smile size={14} className="text-slate-500" />
+                            <span>肢体动作 ▾</span>
+                          </button>
+                          {showActionDropdown && (
+                            <>
+                              <div className="fixed inset-0 z-30" onClick={() => setShowActionDropdown(false)} />
+                              <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200/90 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] py-1 z-45 animate-fade-in select-none text-left">
+                                {INS_ACTIONS.map(act => (
+                                  <button
+                                    key={act.id}
+                                    type="button"
+                                    onClick={() => {
+                                      insertTextAtCursor(`\`${act.code}\``);
+                                      setShowActionDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:text-black hover:bg-slate-50 font-medium border-0 bg-transparent transition-colors cursor-pointer"
+                                  >
+                                    <span>{act.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* 环境技能 Dropdown */}
+                        <div className="relative">
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowSkillDropdown(!showSkillDropdown);
+                              setShowActionDropdown(false);
+                            }}
+                            className="h-7 px-2 rounded-lg text-[11px] font-semibold text-slate-650 hover:text-black hover:bg-slate-100 flex items-center gap-1 transition-colors border-0 bg-transparent cursor-pointer"
+                            title="联动技能"
+                          >
+                            <Zap size={14} className="text-slate-500" />
+                            <span>联动技能 ▾</span>
+                          </button>
+                          {showSkillDropdown && (
+                            <>
+                              <div className="fixed inset-0 z-30" onClick={() => setShowSkillDropdown(false)} />
+                              <div className="absolute left-0 mt-1 w-32 bg-white border border-slate-200/90 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] py-1 z-45 animate-fade-in select-none text-left">
+                                {INS_SKILLS.map(sk => (
+                                  <button
+                                    key={sk.id}
+                                    type="button"
+                                    onClick={() => {
+                                      insertTextAtCursor(`\`${sk.code}\``);
+                                      setShowSkillDropdown(false);
+                                    }}
+                                    className="w-full text-left px-3 py-1.5 text-[11px] text-slate-700 hover:text-black hover:bg-slate-50 font-medium border-0 bg-transparent transition-colors cursor-pointer"
+                                  >
+                                    <span>{sk.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+
+                        {/* 分割线 */}
+                        <div className="w-[1px] h-3.5 bg-slate-200 mx-1 shrink-0" />
+
+                        {/* Heading */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n### ')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="三级标题"
+                        >
+                          <Heading size={14} />
+                        </button>
+
+                        {/* Bold */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('**加粗**')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent font-bold"
+                          title="加粗"
+                        >
+                          <Bold size={14} />
+                        </button>
+
+                        {/* Italic */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('*斜体*')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="斜体"
+                        >
+                          <Italic size={14} />
+                        </button>
+
+                        {/* Strikethrough */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('~~删除线~~')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="删除线"
+                        >
+                          <Strikethrough size={14} />
+                        </button>
+
+                        {/* Link */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('[链接文字](https://example.com)')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="插入链接"
+                        >
+                          <Link size={14} />
+                        </button>
+
+                        {/* 分割线 */}
+                        <div className="w-[1px] h-3.5 bg-slate-200 mx-1 shrink-0" />
+
+                        {/* Unordered List */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n- ')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="无序列表"
+                        >
+                          <List size={14} />
+                        </button>
+
+                        {/* Ordered List */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n1. ')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="有序列表"
+                        >
+                          <ListOrdered size={14} />
+                        </button>
+
+                        {/* List Todo */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n- [ ] ')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="任务列表"
+                        >
+                          <ListTodo size={14} />
+                        </button>
+
+                        {/* 分割线 */}
+                        <div className="w-[1px] h-3.5 bg-slate-200 mx-1 shrink-0" />
+
+                        {/* Trigger Template */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n- **触发**: \n- **执行**: \n')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="触法执行模板"
+                        >
+                          <Send size={14} />
+                        </button>
+
+                        {/* Separator Line */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n---\n')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="分割线"
+                        >
+                          <Minus size={14} />
+                        </button>
+
+                        {/* Code */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('`代码行`')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="单行代码"
+                        >
+                          <Code size={14} />
+                        </button>
+
+                        {/* Code2 block */}
+                        <button
+                          type="button"
+                          onClick={() => insertTextAtCursor('\n```yaml\n\n```')}
+                          className="h-7 w-7 rounded-lg text-slate-500 hover:text-black hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-center border-0 bg-transparent"
+                          title="代码块"
+                        >
+                          <Code2 size={14} />
+                        </button>
+
+                      </div>
+                    </div>
+
+                    <div className="relative flex-1 min-h-0 flex flex-col">
+                      <textarea
+                        ref={textareaRef}
+                        className="flex-1 min-h-0 border border-[#e6e6eb] rounded-2xl bg-white p-5 font-mono text-xs leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800 select-text resize-none overflow-y-auto shadow-inner"
+                        placeholder="编写属于您的智能体 Markdown 解析剧本... (输入 / 快速唤起动作与技能)"
+                        value={docContents[currentScriptView] || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (propSetDocContents) {
+                            propSetDocContents(prev => ({ ...prev, [currentScriptView]: val }));
+                          }
+
+                          const selStart = e.target.selectionStart;
+                          if (!slashMenu) {
+                            // 1. 如果斜杠菜单当时没有开启，只要刚输入的字符前一个是 '/'
+                            const charBefore = val.substring(selStart - 1, selStart);
+                            if (charBefore === '/') {
+                              setSlashMenu({
+                                isOpen: true,
+                                searchQuery: '',
+                                cursorPosition: selStart - 1
+                              });
+                            }
+                          } else {
+                            // 2. 如果当前已经开启了
+                            const { cursorPosition } = slashMenu;
+                            // 检查 / 字符是否还在 cursorPosition
+                            if (val[cursorPosition] !== '/') {
+                              setSlashMenu(null);
+                            } else {
+                              const query = val.substring(cursorPosition + 1, selStart);
+                              if (selStart <= cursorPosition || /\s/.test(query)) {
+                                setSlashMenu(null);
+                              } else {
+                                setSlashMenu({
+                                  isOpen: true,
+                                  searchQuery: query,
+                                  cursorPosition
+                                });
+                              }
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === '/') {
+                            const selStart = e.currentTarget.selectionStart;
+                            if (!slashMenu) {
+                              setSlashMenu({
+                                isOpen: true,
+                                searchQuery: '',
+                                cursorPosition: selStart
+                              });
+                            }
+                          }
+
+                          if (slashMenu && slashMenu.isOpen) {
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault();
+                              setSlashSelectedIndex(prev => (prev + 1) % (activeLevel2Items.length || 1));
+                            } else if (e.key === 'ArrowUp') {
+                              e.preventDefault();
+                              setSlashSelectedIndex(prev => (prev - 1 + (activeLevel2Items.length || 1)) % (activeLevel2Items.length || 1));
+                            } else if (e.key === 'Tab' || e.key === 'ArrowRight') {
+                              e.preventDefault();
+                              setSlashActiveCategory(prev => prev === 'action' ? 'skill' : 'action');
+                              setSlashSelectedIndex(0);
+                            } else if (e.key === 'ArrowLeft') {
+                              e.preventDefault();
+                              setSlashActiveCategory(prev => prev === 'skill' ? 'action' : 'skill');
+                              setSlashSelectedIndex(0);
+                            } else if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (activeLevel2Items[slashSelectedIndex]) {
+                                handleSelectSlashItem(activeLevel2Items[slashSelectedIndex]);
+                              }
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setSlashMenu(null);
+                            }
+                          }
+                        }}
+                      />
+
+                      {/* ⚙️ 原地斜杠浮窗组件 */}
+                      {slashMenu && slashMenu.isOpen && (
+                        <div 
+                          style={{ top: `${getCaretCoordinates().top}px`, left: `${getCaretCoordinates().left}px` }}
+                          className="absolute w-[240px] bg-white rounded-xl border border-[#e6e6eb] shadow-[0_10px_30px_rgba(0,0,0,0.15)] z-50 flex overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150"
+                        >
+                          {/* 一级菜单: 动作库 & 技能库 */}
+                          <div className="w-[85px] bg-slate-50 border-r border-[#f0f0f5] flex flex-col p-1 gap-0.5 shrink-0 select-none text-[11px] font-semibold text-slate-600">
+                            <div
+                              onMouseEnter={() => setSlashActiveCategory('action')}
+                              onClick={() => setSlashActiveCategory('action')}
+                              className={`px-2 py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-between ${
+                                slashActiveCategory === 'action'
+                                  ? 'bg-slate-200/60 text-slate-900 font-bold'
+                                  : 'hover:bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              <span>动作库</span>
+                              <span className="text-[9px] text-slate-400">›</span>
+                            </div>
+                            
+                            <div
+                              onMouseEnter={() => setSlashActiveCategory('skill')}
+                              onClick={() => setSlashActiveCategory('skill')}
+                              className={`px-2 py-1.5 rounded-lg cursor-pointer transition-all flex items-center justify-between ${
+                                slashActiveCategory === 'skill'
+                                  ? 'bg-slate-200/60 text-slate-900 font-bold'
+                                  : 'hover:bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              <span>技能库</span>
+                              <span className="text-[9px] text-slate-400">›</span>
+                            </div>
+                          </div>
+
+                          {/* 二级菜单: 展开的列表内容 */}
+                          <div className="flex-1 overflow-y-auto p-1 max-h-[160px] flex flex-col gap-0.5 min-w-0 bg-white">
+                            {activeLevel2Items.length === 0 ? (
+                              <div className="py-8 text-center text-slate-400 text-[10px] font-sans font-medium">
+                                无匹配
+                              </div>
+                            ) : (
+                              activeLevel2Items.map((item, index) => {
+                                const isSelected = index === slashSelectedIndex;
+                                return (
+                                  <div
+                                    key={item.id}
+                                    onClick={() => handleSelectSlashItem(item)}
+                                    onMouseEnter={() => setSlashSelectedIndex(index)}
+                                    className={`w-full text-left px-2 py-1 text-[11px] flex items-center justify-between transition-all duration-75 cursor-pointer rounded-lg select-none ${
+                                      isSelected 
+                                        ? 'bg-[#1a1a1c] text-white shadow-xs font-semibold' 
+                                        : 'hover:bg-slate-50 text-slate-700 font-medium'
+                                    }`}
+                                  >
+                                    <span className="truncate flex-1 pr-1">{item.label}</span>
+                                    <span className={`text-[8px] px-1 py-0.2 rounded font-mono scale-90 shrink-0 ${
+                                      isSelected 
+                                        ? 'bg-white/20 text-white font-extrabold' 
+                                        : item.type === 'action' 
+                                          ? 'bg-blue-50/70 text-blue-600 border border-blue-100 font-bold' 
+                                          : 'bg-indigo-50/70 text-indigo-600 border border-indigo-100 font-bold'
+                                    }`}>
+                                      {item.type === 'action' ? '动作' : '技能'}
+                                    </span>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* ================== B. 真实 Markdown 渲染预览区 ================== */
+                  <div className="flex-1 min-h-0 border border-[#e6e6eb] rounded-2xl bg-[#fafafc] p-6 font-mono text-xs leading-relaxed text-slate-705 select-text overflow-y-auto shadow-inner">
+                    {renderScriptContent(docContents[currentScriptView] || docContents['welcomeFlow'])}
+                  </div>
+                )}
               </div>
               
               <div className="flex items-center justify-between text-[11px] text-slate-400 font-bold font-mono shrink-0">
                 <span>FORMAT: markdown / structural_script</span>
-                <span className="text-blue-600 flex items-center gap-1 cursor-pointer font-sans">
-                  <span>⚡ 逻辑检查及动作映射已激活</span>
+                <span className="text-blue-600 flex items-center gap-1 cursor-pointer font-sans" onClick={() => setScriptEditMode('edit')}>
+                  <span>⚡ 逻辑检查及动作映射已激活 (支持打字和一键富文本)</span>
                 </span>
               </div>
             </div>
           ) : activePanelTab === 'task' ? (
             /* ================== 下半段: 任务书主工作台 ================== */
-            <div className="p-5 flex flex-col gap-4 flex-1 min-h-0 overflow-hidden font-sans">
+            <div className="px-5 pb-4 pt-1 flex flex-col gap-3 flex-1 min-h-0 overflow-hidden font-sans">
               
 
 
@@ -1071,7 +1755,7 @@ keywords:
             </div>
           ) : (
             /* ================== 下半段: 人设编辑与配置模块 ================== */
-            <div className="p-6 flex flex-col gap-5 flex-1 min-h-0 font-sans text-left select-text">
+            <div className="px-5 pb-5 pt-1 flex flex-col gap-3.5 flex-1 min-h-0 font-sans text-left select-text">
               
               {/* 发音人音色 */}
               <div className="flex flex-col gap-1.5 text-left shrink-0">
@@ -1203,6 +1887,97 @@ keywords:
           </div>
         )}
       </AnimatePresence>
+
+      {/* 6. 高阶肢体/技能二级全屏大插入浮窗模态框 */}
+      {showInsertModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[110] p-4 animate-fade-in select-none">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 w-full max-w-2xl overflow-hidden flex flex-col text-slate-800 animate-slide-in select-none max-h-[85vh]">
+            
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-2.5 text-left">
+                <span className="text-xl leading-none">🔮</span>
+                <div>
+                  <h3 className="text-[12.5px] font-bold text-slate-800">行为剧本智能插桩：添加机器人动作与物联技能</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">选择推荐的功能要素，瞬间一键注入至当前编辑器的光标位置</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowInsertModal(false)}
+                className="w-7 h-7 rounded-full border border-slate-201 bg-white text-slate-400 hover:text-slate-700 hover:border-slate-300 flex items-center justify-center transition-colors text-xs font-bold shadow-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            
+            {/* Modal Body with 2-column list */}
+            <div className="p-5 overflow-y-auto flex-1 flex flex-col md:flex-row gap-5 min-h-0 text-left">
+              {/* Left Column: Actions */}
+              <div className="flex-1 flex flex-col gap-3 min-h-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-slate-100 pb-2 shrink-0">
+                  <span>👋</span>
+                  <span>推荐动作库 (Actions Library)</span>
+                </div>
+                <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-1 bg-slate-50/10 p-1 rounded-xl">
+                  {INS_ACTIONS.map(act => (
+                    <div 
+                      key={act.id}
+                      onClick={() => {
+                        insertTextAtCursor(`\`${act.code}\``);
+                        setShowInsertModal(false);
+                      }}
+                      className="group border border-slate-200 hover:border-slate-900 bg-white hover:bg-slate-50/40 p-2.5 rounded-xl cursor-pointer transition-all active:scale-[0.98] select-none text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-extrabold text-slate-800 group-hover:text-black">{act.label}</span>
+                        <span className="font-mono text-[9px] text-slate-400 group-hover:text-slate-600 bg-slate-50 px-1 py-0.5 border border-slate-150 rounded scale-[0.9]">+ {act.id}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">{act.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Right Column: Skills */}
+              <div className="flex-1 flex flex-col gap-3 min-h-0">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 border-b border-slate-100 pb-2 shrink-0">
+                  <span>🔌</span>
+                  <span>推荐技能库 (Skills Library)</span>
+                </div>
+                <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-1 bg-slate-50/10 p-1 rounded-xl">
+                  {INS_SKILLS.map(sk => (
+                    <div 
+                      key={sk.id}
+                      onClick={() => {
+                        insertTextAtCursor(`\`${sk.code}\``);
+                        setShowInsertModal(false);
+                      }}
+                      className="group border border-slate-200 hover:border-slate-900 bg-white hover:bg-slate-50/40 p-2.5 rounded-xl cursor-pointer transition-all active:scale-[0.98] select-none text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-extrabold text-slate-800 group-hover:text-black">{sk.label}</span>
+                        <span className="font-mono text-[9px] text-slate-400 group-hover:text-slate-600 bg-slate-50 px-1 py-0.5 border border-slate-150 rounded scale-[0.9]">+ {sk.id}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">{sk.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between text-[10px] text-slate-400 font-bold">
+              <span>💡 小贴士：点击上方任何功能卡片即可马上对齐插桩到当前光标原位</span>
+              <button 
+                onClick={() => setShowInsertModal(false)}
+                className="px-4 py-1.5 rounded-xl bg-black hover:bg-slate-800 text-white font-bold cursor-pointer transition-colors border-0 text-xs shadow-xs"
+              >
+                就绪关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

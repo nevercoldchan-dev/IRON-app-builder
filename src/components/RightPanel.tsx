@@ -8,7 +8,7 @@ interface RightPanelProps {
   onDeleteResourceMap: () => void;
   setResourceSections: (sections: ResourceSection[]) => void;
   setActivePanelTab?: (tab: 'script' | 'task' | 'persona') => void;
-  setCurrentScriptView?: (view: 'welcomeFlow' | 'companyIntro' | 'visitorReception') => void;
+  setCurrentScriptView?: (view: string) => void;
   highlightedAction?: string | null;
   setHighlightedAction?: (act: string | null) => void;
   onResourceReplacementConfirm?: (category: string, oldItem: string, newItem: string) => void;
@@ -743,7 +743,21 @@ export default function RightPanel({
         {/* ========== A. 地图/知识库 (可删除和替换) ========== */}
         {(activeTab === 'map' || activeTab === 'knowledge') && (
           <div className="flex flex-col gap-3">
-              {activeItems.length > 0 ? (
+            {activeTab === 'knowledge' && (
+              <div className="flex justify-between items-center px-1 mb-1 shrink-0 animate-fade-in">
+                <span className="text-[11.5px] font-extrabold text-[#1d1d1f] flex items-center gap-1.5">
+                  <span>📚</span> 启用的知识库
+                </span>
+                <button
+                  type="button"
+                  className="px-2.5 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-3xs normal-case tracking-normal shrink-0"
+                  title="查看与管理系统完整底层应用资源"
+                >
+                  <span>📦 全部知识库</span>
+                </button>
+              </div>
+            )}
+            {activeItems.length > 0 ? (
                 activeItems.map((item, idx) => {
                   const detailInfo = registryItems.find(reg => reg.name === item) || {
                     desc: '基于大语言模型自适应编排产生的物理物联绑定资源底座。',
@@ -767,24 +781,14 @@ export default function RightPanel({
                         
                         {/* 交互按键：替换与物理删除 */}
                         <div className="flex items-center gap-1.5 shrink-0">
-                          {activeTab === 'knowledge' ? (
-                            <button
-                              onClick={() => setSelectedKnowledgeForDetail(detailInfo)}
-                              className="px-2 py-1.5 rounded text-[10.5px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-3xs"
-                              title="查看当前知识库详细内容与预设问答"
-                            >
-                              <Search className="w-3 h-3 text-slate-500 shrink-0" />
-                              <span>详情</span>
-                            </button>
-                          ) : (
+                          {activeTab === 'map' && (
                             <>
                               <button
                                 type="button"
-                                className="px-2 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-650 border-slate-200 shadow-3xs"
-                                title="查看当前地图的详细物理坐标与拓扑图图层"
+                                className="px-2.5 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-3xs normal-case tracking-normal shrink-0"
+                                title="查看与管理系统完整底层应用资源"
                               >
-                                <Search className="w-3 h-3 text-slate-500 shrink-0" />
-                                <span>详情</span>
+                                <span>📦 全部地图</span>
                               </button>
                               <button
                                 onClick={() => {
@@ -1160,6 +1164,13 @@ export default function RightPanel({
           <div className="flex flex-col gap-3.5">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">
               <span>🤖 导控姿态离线拟真预览</span>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-3xs normal-case tracking-normal shrink-0"
+                title="查看与管理系统完整底层应用资源"
+              >
+                <span>📦 全部动作</span>
+              </button>
             </div>
 
             {/* 3D 机器人高科技动作预览板 (参考图2) */}
@@ -1308,6 +1319,13 @@ export default function RightPanel({
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">
               <span>📋 物联网外设指令与回调日志</span>
+              <button
+                type="button"
+                className="px-2.5 py-1.5 rounded text-[10px] font-bold cursor-pointer transition-all border flex items-center gap-1 bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-3xs normal-case tracking-normal shrink-0"
+                title="查看与管理系统完整底层应用资源"
+              >
+                <span>📦 全部技能</span>
+              </button>
             </div>
 
             {/* 实景高阶 API 调试监视器 */}
