@@ -1263,6 +1263,9 @@ export default function RightPanel({
                     key={actName}
                     onClick={() => {
                       setSelectedActionInTab(actName);
+                      if (setHighlightedAction) {
+                        setHighlightedAction(actName);
+                      }
                     }}
                     className={`px-2.5 py-1.5 rounded-lg border text-[10.5px] font-bold cursor-pointer transition-all flex items-center gap-1 ${
                       selectedActionInTab === actName 
@@ -1359,6 +1362,9 @@ export default function RightPanel({
                     key={skillName}
                     onClick={() => {
                       setSelectedSkillInTab(skillName);
+                      if (setHighlightedAction) {
+                        setHighlightedAction(skillName);
+                      }
                     }}
                     className={`px-2.5 py-1.5 rounded-lg border text-[10.5px] font-bold cursor-pointer transition-all flex items-center gap-1 ${
                       selectedSkillInTab === skillName 

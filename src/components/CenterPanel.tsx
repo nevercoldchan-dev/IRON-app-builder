@@ -5,29 +5,36 @@ import {
   Trash2, 
   ArrowRight, 
   Clock, 
-  Maximize2,
-  Minimize2,
-  Sparkles,
-  ShieldAlert,
-  User,
-  AudioLines,
-  Compass,
-  CheckCircle2,
-  CircleDot,
-  Smile,
-  Zap,
-  Heading,
-  Bold,
-  Italic,
-  Strikethrough,
-  Link,
-  List,
-  ListOrdered,
-  ListTodo,
-  Send,
-  Minus,
-  Code,
-  Code2
+  Maximize2, 
+  Minimize2, 
+  Sparkles, 
+  ShieldAlert, 
+  User, 
+  AudioLines, 
+  Compass, 
+  CheckCircle2, 
+  CircleDot, 
+  Smile, 
+  Zap, 
+  Heading, 
+  Bold, 
+  Italic, 
+  Strikethrough, 
+  Link, 
+  List, 
+  ListOrdered, 
+  ListTodo, 
+  Send, 
+  Minus, 
+  Code, 
+  Code2,
+  Undo2,
+  Redo2,
+  Plus,
+  History,
+  X,
+  FileText,
+  BookOpen
 } from 'lucide-react';
 import { ResourceSection } from '../types';
 
@@ -40,6 +47,49 @@ export const PRESET_ACTIONS = [
   { id: 'nod', label: '点头肯定与赞同动作', icon: '✨', desc: '在人声输入空闲或需要表示认可时，轻快点头两次，头部伴随2度倾斜' },
   { id: 'dance', label: '极客扭转跳舞动作序列', icon: '💃', desc: '伴随迎宾背景音乐进行的高难度、多关节机械街舞及酷炫交互循环展示律动' },
   { id: 'thinking', label: '抱臂思考微表情手势', icon: '🤔', desc: '双臂抱于胸前，头部斜倾 8 度，双目做微缩对焦状，动作伴随呼吸起伏' }
+];
+
+const PRESET_TASK_SNIPPETS = [
+  { 
+    label: '肢体动作节点', 
+    desc: '插入特殊肢体致意动作',
+    type: 'pose',
+    obj: {
+      action: "inte.hri.special_pose",
+      description: "迎宾致意姿态手势",
+      params: { action: "wave_hand" }
+    }
+  },
+  { 
+    label: '语音对话发音', 
+    desc: '播报固定话术与讲解词',
+    type: 'audio',
+    obj: {
+      action: "inte.hri.say_something",
+      description: "语音合成固定对话解说",
+      params: { text: "您好，欢迎莅临小鹏总部，请随我前往智驾长廊参观体验。" }
+    }
+  },
+  { 
+    label: '高精激光导航', 
+    desc: '规划车辆展区安全路径点',
+    type: 'navi',
+    obj: {
+      action: "navi.locomotion.navigate_to_target",
+      description: "高精激光SLAM制导前往目标点",
+      params: { target_name: "门口", timeout: 300 }
+    }
+  },
+  { 
+    label: '物理大屏幕联动', 
+    desc: '控制馆内多媒体广播播放',
+    type: 'screen',
+    obj: {
+      action: "iot.trigger_screen",
+      description: "联动机电及多媒体演示屏广播",
+      params: { command: "play_video" }
+    }
+  }
 ];
 
 interface CenterPanelProps {
@@ -63,6 +113,10 @@ interface CenterPanelProps {
   setTasks?: (tasks: any[]) => void;
   currentMapName?: string;
   isMapConflict?: boolean;
+  taskContents?: Record<string, string>;
+  setTaskContents?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  currentTaskView?: string;
+  setCurrentTaskView?: (view: string) => void;
 }
 
 const ACTION_TO_KEYWORD: Record<string, string> = {
@@ -102,7 +156,11 @@ export default function CenterPanel({
   tasks: propTasks,
   setTasks: propSetTasks,
   currentMapName = '小鹏科技园大堂地图',
-  isMapConflict = false
+  isMapConflict = false,
+  taskContents: propTaskContents,
+  setTaskContents: propSetTaskContents,
+  currentTaskView: propCurrentTaskView,
+  setCurrentTaskView: propSetCurrentTaskView
 }: CenterPanelProps) {
 
   // 任务书默认行动（actions类型）保持高品质动作
@@ -357,9 +415,39 @@ keywords:
   const setTasks = propSetTasks !== undefined ? propSetTasks : setLocalTasks;
   const docContents = propDocContents !== undefined ? propDocContents : localDocContents;
 
+  const [localTaskContents, setLocalTaskContents] = useState<Record<string, string>>(() => ({
+    defaultTask: defaultTaskJson
+  }));
+  const [localCurrentTaskView, setLocalCurrentTaskView] = useState<string>('defaultTask');
+
+  const taskContents = propTaskContents !== undefined ? propTaskContents : localTaskContents;
+  const setTaskContents = propSetTaskContents !== undefined ? propSetTaskContents : setLocalTaskContents;
+  const currentTaskView = propCurrentTaskView !== undefined ? propCurrentTaskView : localCurrentTaskView;
+  const setCurrentTaskView = propSetCurrentTaskView !== undefined ? propSetCurrentTaskView : setLocalCurrentTaskView;
+
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
-  const [isJsonEditing, setIsJsonEditing] = useState(false);
+  const [isJsonEditing, setIsJsonEditing] = useState(true);
+
+  // Undo / Redo & Snapshot history states for JSON editing
+  const [taskUndoStack, setTaskUndoStack] = useState<Record<string, string[]>>({});
+  const [taskRedoStack, setTaskRedoStack] = useState<Record<string, string[]>>({});
+  const lastUndoPushRef = React.useRef<number>(0);
+  const [showHistorySidebar, setShowHistorySidebar] = useState(false);
+  const [newSnapshotNote, setNewSnapshotNote] = useState('');
+
+  // 任务书版本快照 (Per-task snapshots)
+  const [taskSnapshots, setTaskSnapshots] = useState<Record<string, { id: string; timestamp: string; text: string; note: string; nodeCount: number }[]>>(() => ({
+    defaultTask: [
+      { id: '1', timestamp: '2026-06-04 15:30:12', text: defaultTaskJson, note: '系统预设 首页大堂导购流程', nodeCount: 12 }
+    ],
+    facilityTask: [
+      { id: '1', timestamp: '2026-06-04 15:35:00', text: taskContents?.facilityTask || '', note: '初始化贵宾指引与配套洗手间路线', nodeCount: 1 }
+    ],
+    nightPatrolTask: [
+      { id: '1', timestamp: '2026-06-04 15:40:00', text: taskContents?.nightPatrolTask || '', note: '初始化夜间防盗安全雷达巡更', nodeCount: 1 }
+    ]
+  }));
 
   // 行为剧本相关的新状态
   const [scriptEditMode, setScriptEditMode] = useState<'edit' | 'preview'>('edit'); // 默认展示可修改的编辑状态
@@ -367,6 +455,8 @@ keywords:
   const [showActionDropdown, setShowActionDropdown] = useState(false);
   const [showSkillDropdown, setShowSkillDropdown] = useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const highlightOverlayRef = React.useRef<HTMLDivElement>(null);
+  const [isTextareaFocused, setIsTextareaFocused] = useState(false);
 
   // 动作和技能的预设描述，用于快捷浮层/二级气泡展示与插入
   const INS_ACTIONS = [
@@ -658,10 +748,10 @@ desc: 自定义流程步骤与安防、技能联控说明
     updateJsonAndTasks(nextJsonText);
   };
 
-  // 当外部导航切换至任务书面板时，自动关闭 JSON 编辑模式以确保正常展示高亮内容
+  // 当外部导航切换至任务书面板时，自动开启并保持 JSON 编辑模式
   useEffect(() => {
     if (activePanelTab === 'task') {
-      setIsJsonEditing(false);
+      setIsJsonEditing(true);
     }
   }, [activePanelTab]);
 
@@ -670,7 +760,7 @@ desc: 自定义流程步骤与安防、技能联控说明
     if (isMapConflict) {
       if (activePanelTab === 'task') {
         if (isJsonEditing) {
-          setIsJsonEditing(false);
+          // 始终允许用户在此编辑 JSON 配置文件，不再退回至高亮纯展示模式
           return;
         }
         const timer = setTimeout(() => {
@@ -733,10 +823,234 @@ desc: 自定义流程步骤与安防、技能联控说明
     try {
       const parsed = JSON.parse(jsonText);
       const formatted = JSON.stringify(parsed, null, 2);
-      setJsonText(formatted);
+      updateJsonAndTasksWithHistory(formatted, true);
       setJsonError(null);
     } catch (err: any) {
       setJsonError(`格式化失败，请检查 JSON 语法: ${err.message}`);
+    }
+  };
+
+  const getTaskBookName = (key: string, content: string) => {
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed && typeof parsed === 'object') {
+        if (!Array.isArray(parsed) && parsed.task_name) {
+          return parsed.task_name;
+        }
+        if (Array.isArray(parsed) && parsed[0] && parsed[0].name) {
+          return parsed[0].name;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    if (key === 'defaultTask') return '小鹏总部导购';
+    if (key === 'facilityTask') return '区域设施指引';
+    if (key === 'nightPatrolTask') return '夜间安全巡检';
+    return '自定义任务书';
+  };
+
+  const handleAddNewTaskBook = () => {
+    const currentCount = Object.keys(taskContents).length;
+    if (currentCount >= 10) {
+      alert("最多只能支持创建 10 个任务书！");
+      return;
+    }
+    const newKey = `taskBook_${Date.now()}`;
+    const defaultValue = `[
+  {
+    "id": "T1",
+    "name": "自定义迎宾流程_${currentCount + 1}",
+    "desc": "新设立的任务书，包含自定义的迎宾机器人和多功能智驾讲解序列。",
+    "actions": [
+      "inte.hri.special_pose(action=\\"wave_hand\\")",
+      "inte.hri.say_something(text=\\"您好，自定义任务书已经成功加载并执行！\\")"
+    ],
+    "status": "planning",
+    "priority": "P2"
+  }
+]`;
+    if (propSetTaskContents) {
+      propSetTaskContents(prev => ({
+        ...prev,
+        [newKey]: defaultValue
+      }));
+    }
+    if (propSetCurrentTaskView) {
+      propSetCurrentTaskView(newKey);
+    }
+    setIsJsonEditing(true);
+  };
+
+  const handleDeleteTaskBook = (keyToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (propSetTaskContents) {
+      propSetTaskContents(prev => {
+        const copy = { ...prev };
+        delete copy[keyToDelete];
+        
+        const remainingKeys = Object.keys(copy);
+        if (remainingKeys.length > 0) {
+          if (currentTaskView === keyToDelete && propSetCurrentTaskView) {
+            propSetCurrentTaskView(remainingKeys[0]);
+          }
+        } else {
+          const fallbackKey = 'defaultTask';
+          copy[fallbackKey] = defaultTaskJson;
+          if (propSetCurrentTaskView) {
+            propSetCurrentTaskView(fallbackKey);
+          }
+        }
+        return copy;
+      });
+    }
+  };
+
+  // Undo / Redo history tracking for JSON Editor
+  const updateJsonAndTasksWithHistory = (newText: string, forceHistoryGroup = false) => {
+    const prevText = jsonText;
+    updateJsonAndTasks(newText);
+
+    const now = Date.now();
+    // Group edits within 1.5s, or force group on format/minifying/snippet actions
+    if (forceHistoryGroup || now - lastUndoPushRef.current > 1500) {
+      if (prevText !== newText) {
+        setTaskUndoStack(prev => {
+          const currentStack = prev[currentTaskView] || [];
+          return {
+            ...prev,
+            [currentTaskView]: [...currentStack, prevText]
+          };
+        });
+        setTaskRedoStack(prev => ({
+          ...prev,
+          [currentTaskView]: []
+        }));
+        lastUndoPushRef.current = now;
+      }
+    }
+  };
+
+  const handleUndo = () => {
+    const currentStack = taskUndoStack[currentTaskView] || [];
+    if (currentStack.length === 0) return;
+
+    const previousText = currentStack[currentStack.length - 1];
+    const newStack = currentStack.slice(0, -1);
+
+    setTaskUndoStack(prev => ({
+      ...prev,
+      [currentTaskView]: newStack
+    }));
+
+    setTaskRedoStack(prev => {
+      const currentRedo = prev[currentTaskView] || [];
+      return {
+        ...prev,
+        [currentTaskView]: [...currentRedo, jsonText]
+      };
+    });
+
+    updateJsonAndTasks(previousText);
+    lastUndoPushRef.current = Date.now();
+  };
+
+  const handleRedo = () => {
+    const currentRedo = taskRedoStack[currentTaskView] || [];
+    if (currentRedo.length === 0) return;
+
+    const nextText = currentRedo[currentRedo.length - 1];
+    const newRedo = currentRedo.slice(0, -1);
+
+    setTaskRedoStack(prev => ({
+      ...prev,
+      [currentTaskView]: newRedo
+    }));
+
+    setTaskUndoStack(prev => {
+      const currentUndo = prev[currentTaskView] || [];
+      return {
+        ...prev,
+        [currentTaskView]: [...currentUndo, jsonText]
+      };
+    });
+
+    updateJsonAndTasks(nextText);
+    lastUndoPushRef.current = Date.now();
+  };
+
+  const handleCreateSnapshot = () => {
+    const noteText = newSnapshotNote.trim() || '手动保存快照';
+    let nodes = 0;
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (typeof parsed === 'object' && parsed !== null) {
+        nodes = Array.isArray(parsed) ? parsed.length : (parsed.actions?.length || 0);
+      }
+    } catch (e) {}
+
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+    const newSnap = {
+      id: String(Date.now()),
+      timestamp: timeStr,
+      text: jsonText,
+      note: noteText,
+      nodeCount: nodes
+    };
+
+    setTaskSnapshots(prev => {
+      const list = prev[currentTaskView] || [];
+      return {
+        ...prev,
+        [currentTaskView]: [newSnap, ...list]
+      };
+    });
+    setNewSnapshotNote('');
+  };
+
+  const handleInsertSnippet = (snippetObj: any) => {
+    try {
+      const parsed = JSON.parse(jsonText);
+      if (Array.isArray(parsed)) {
+        const updated = [...parsed, snippetObj];
+        updateJsonAndTasksWithHistory(JSON.stringify(updated, null, 2), true);
+        return;
+      } else if (parsed && typeof parsed === 'object') {
+        const actions = parsed.actions || [];
+        const updatedActions = [...actions, snippetObj];
+        const updated = { ...parsed, actions: updatedActions };
+        updateJsonAndTasksWithHistory(JSON.stringify(updated, null, 2), true);
+        return;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // Fallback caret insertion
+    const textarea = document.getElementById('task-textarea') as HTMLTextAreaElement;
+    if (!textarea) {
+      updateJsonAndTasksWithHistory(jsonText + '\n' + JSON.stringify(snippetObj, null, 2), true);
+      return;
+    }
+
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+    const text = textarea.value;
+    const insertStr = ',\n' + JSON.stringify(snippetObj, null, 2);
+    const newVal = text.substring(0, start) + insertStr + text.substring(end);
+    updateJsonAndTasksWithHistory(newVal, true);
+  };
+
+  const handleMinifyJson = () => {
+    try {
+      const parsed = JSON.parse(jsonText);
+      const minified = JSON.stringify(parsed);
+      updateJsonAndTasksWithHistory(minified, true);
+      setJsonError(null);
+    } catch (err: any) {
+      setJsonError(`压缩失败，需要标准合规的 JSON 开创节点: ${err.message}`);
     }
   };
 
@@ -820,7 +1134,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                       ? 'bg-purple-50/70 border-l-4 border-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.15)] scale-[1.01] origin-left animate-pulse'
                       : isHighlightingSemanticPoint
                         ? 'bg-emerald-50/70 border-l-4 border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.15)] scale-[1.01] origin-left animate-pulse'
-                        : 'bg-blue-50/70 border-l-4 border-blue-500 shadow-[0_0_12px_rgba(41,121,255,0.15)] scale-[1.01] origin-left animate-pulse' 
+                        : 'bg-amber-50/70 border-l-4 border-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.15)] scale-[1.01] origin-left animate-pulse' 
                     : 'hover:bg-slate-50/70'
               }`}
             >
@@ -836,7 +1150,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                         ? 'text-purple-900 font-extrabold bg-purple-50/30 px-1 rounded-sm' 
                         : isHighlightingSemanticPoint
                           ? 'text-emerald-955 font-extrabold bg-emerald-50/40 px-1 rounded-sm text-emerald-900'
-                          : 'text-blue-900 font-extrabold bg-blue-50/30 px-1 rounded-sm' 
+                          : 'text-amber-900 font-extrabold bg-amber-50/30 px-1 rounded-sm' 
                       : 'text-slate-755'
                 }`}
               >
@@ -878,6 +1192,37 @@ desc: 自定义流程步骤与安防、技能联控说明
         })}
       </div>
     );
+  };
+
+  const getHighlightedHtml = (text: string) => {
+    if (!text) {
+      return `<span style="color: #94a3b8; font-family: sans-serif; font-size: 12px; pointer-events: none; line-height: 1.5;">编写属于您的智能体 Markdown 解析剧本... (输入 / 快速唤起动作与技能)</span>`;
+    }
+    const escapeHtml = (str: string) => {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    };
+
+    let html = escapeHtml(text);
+    
+    // 1. 匹配并特殊高亮动作（黄色/橘色色系）
+    html = html.replace(/(inte\.hri\.[a-zA-Z0-9_\.]+(?:\([^\)\n]*\))?)/g, (match) => {
+      return `<span style="background-color: #fef08a; color: #854d0e; padding: 1px 4px; border-radius: 4px; border: 1px solid #fde047; font-weight: 600; font-family: monospace;">${match}</span>`;
+    });
+
+    // 2. 匹配并特殊高亮技能（紫色色系）
+    html = html.replace(/((?:iot\.|navi\.)[a-zA-Z0-9_\.]+(?:\([^\)\n]*\))?)/g, (match) => {
+      return `<span style="background-color: #f3e8ff; color: #6b21a8; padding: 1px 4px; border-radius: 4px; border: 1px solid #e9d5ff; font-weight: 600; font-family: monospace;">${match}</span>`;
+    });
+
+    if (html.endsWith('\n')) {
+      html += ' ';
+    }
+    return html;
   };
 
   const renderScriptContent = (text: string | undefined | null) => {
@@ -923,11 +1268,14 @@ desc: 自定义流程步骤与安防、技能联控说明
             if (isMapConflict) {
               if (cleanLine.includes('target_name="展区"') || cleanLine.includes('target_name="门口"') || cleanLine.includes('展区') || cleanLine.includes('门口')) {
                 if (cleanLine.includes('navigate_to_target') || cleanLine.includes('navi.')) {
-                  isMapConflictLine = true;
+                   isMapConflictLine = true;
                   conflictReason = cleanLine.includes('展区') ? '展区' : '门口';
                 }
               }
             }
+
+            const isRowAction = cleanLine.includes('inte.hri.');
+            const isRowSkill = cleanLine.includes('iot.') || cleanLine.includes('navi.');
 
             let isHighlighted = false;
             let isHighlightingSkill = false;
@@ -964,11 +1312,15 @@ desc: 自定义流程步骤与安防、技能联控说明
                       ? 'bg-red-50 border-red-400 text-red-955 shadow-[0_2px_10px_rgba(239,68,68,0.18)] ring-2 ring-red-500/10'
                       : isHighlighted
                         ? isHighlightingSkill
-                          ? 'bg-purple-50/90 border-purple-500 text-purple-900 shadow-[0_2px_10px_rgba(168,85,247,0.18)] ring-2 ring-purple-500/10'
+                          ? 'bg-purple-100/90 border-purple-500 text-purple-900 shadow-[0_2px_15px_rgba(168,85,247,0.22)] ring-2 ring-purple-500/15'
                           : isHighlightingSemanticPoint
                             ? 'bg-emerald-50/95 border-emerald-500 text-emerald-950 shadow-[0_2px_10px_rgba(16,185,129,0.18)] ring-2 ring-emerald-500/10'
-                            : 'bg-blue-50/90 border-blue-500 text-blue-900 shadow-[0_2px_10px_rgba(37,99,235,0.18)] ring-2 ring-blue-500/10'
-                        : 'bg-[#fafafc] border-[#eeeff2] text-slate-700'
+                            : 'bg-amber-100/90 border-amber-500 text-amber-900 shadow-[0_2px_15px_rgba(245,158,11,0.22)] ring-2 ring-amber-500/15'
+                        : isRowAction
+                          ? 'bg-amber-50/50 border-amber-200 text-amber-950 hover:bg-amber-50 hover:border-amber-300/80 transition-colors'
+                          : isRowSkill
+                            ? 'bg-purple-50/50 border-purple-200 text-purple-950 hover:bg-purple-50 hover:border-purple-300/80 transition-colors'
+                            : 'bg-[#fafafc] border-[#eeeff2] text-slate-700'
                   }`}
                   style={{
                     backgroundColor: isMapConflictLine 
@@ -978,8 +1330,12 @@ desc: 自定义流程步骤与安防、技能联控说明
                           ? '#faf5ff' 
                           : isHighlightingSemanticPoint
                             ? '#f0fdf4'
-                            : '#eff6ff' 
-                        : '#fcfcfd'
+                            : '#fefbf0' 
+                        : isRowAction
+                          ? '#fefcf3'
+                          : isRowSkill
+                            ? '#faf7fe'
+                            : '#fcfcfd'
                   }}
                 >
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -988,11 +1344,15 @@ desc: 自定义流程步骤与安防、技能联控说明
                         ? 'bg-red-500 animate-pulse' 
                         : isHighlighted 
                           ? isHighlightingSkill 
-                            ? 'bg-purple-500' 
+                            ? 'bg-purple-500 shadow-xs' 
                             : isHighlightingSemanticPoint
-                              ? 'bg-emerald-500'
-                              : 'bg-blue-500' 
-                          : 'bg-slate-300'
+                              ? 'bg-emerald-500 shadow-xs'
+                              : 'bg-amber-500 shadow-xs' 
+                          : isRowAction
+                            ? 'bg-amber-500'
+                            : isRowSkill
+                              ? 'bg-purple-500'
+                              : 'bg-slate-350'
                     }`} />
                     {actionMatch ? (
                       <span className={`whitespace-pre-wrap text-left select-all break-all pr-4 ${
@@ -1003,8 +1363,12 @@ desc: 自定义流程步骤与安防、技能联控说明
                               ? 'text-purple-955 font-extrabold' 
                               : isHighlightingSemanticPoint
                                 ? 'text-emerald-955 font-extrabold text-emerald-900'
-                                : 'text-blue-955 font-extrabold' 
-                            : 'text-slate-755 font-semibold'
+                                : 'text-amber-955 font-extrabold' 
+                            : isRowAction
+                              ? 'text-amber-900 font-semibold'
+                              : isRowSkill
+                                ? 'text-purple-900 font-semibold'
+                                : 'text-slate-755 font-semibold'
                       }`}>
                         <span>{cleanLine.substring(0, cleanLine.indexOf(actionMatch[0]))}{actionMatch[1]}</span>
                         <button
@@ -1027,7 +1391,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                         <span>{actionMatch[3]}{cleanLine.substring(cleanLine.indexOf(actionMatch[0]) + actionMatch[0].length)}</span>
                       </span>
                     ) : (
-                      <span className={`whitespace-pre-wrap text-left select-all break-all pr-4 ${isMapConflictLine ? 'text-red-950 font-extrabold font-mono text-[11.5px]' : isHighlighted ? isHighlightingSkill ? 'text-purple-950 font-extrabold' : 'text-blue-950 font-extrabold' : 'text-slate-750 font-semibold'}`}>
+                      <span className={`whitespace-pre-wrap text-left select-all break-all pr-4 ${isMapConflictLine ? 'text-red-950 font-extrabold font-mono text-[11.5px]' : isHighlighted ? isHighlightingSkill ? 'text-purple-950 font-extrabold' : 'text-amber-950 font-extrabold' : isRowAction ? 'text-amber-900 font-semibold' : isRowSkill ? 'text-purple-900 font-semibold' : 'text-slate-750 font-semibold'}`}>
                         {isMapConflictLine ? (
                           <span>
                             {cleanLine.includes('展区') ? (
@@ -1064,6 +1428,7 @@ desc: 自定义流程步骤与安防、技能联控说明
             );
           }
 
+
           if (trimmed.startsWith('name:')) {
             return (
               <div key={idx} className="text-left font-sans text-xs text-slate-500 font-bold mb-1 border-b border-slate-105 pb-1.5">
@@ -1080,7 +1445,7 @@ desc: 自定义流程步骤与安防、技能联控说明
           }
           if (trimmed.startsWith('keywords:') || trimmed.match(/^- \S+/)) {
             if (trimmed.startsWith('keywords:')) {
-              return <div key={idx} className="text-left text-[10.5px] font-bold text-slate-400 mt-1 mb-1">📋 KEYWORDS:</div>;
+              return <div key={idx} className="text-left text-[10.5px] font-bold text-slate-400 mt-1 mb-1">KEYWORDS:</div>;
             }
             return (
               <span key={idx} className="inline-block bg-slate-100/75 text-slate-500 text-[10px] font-extrabold px-2 py-0.5 rounded border border-slate-200/50 mr-1.5 my-0.5 self-start scale-95 font-sans">
@@ -1092,7 +1457,7 @@ desc: 自定义流程步骤与安防、技能联控说明
             const isConstraint = trimmed.includes('约束');
             return (
               <h3 key={idx} className={`text-sm font-extrabold mt-5 mb-2.5 text-left font-sans tracking-tight flex items-center gap-1.5 ${isConstraint ? 'text-slate-700' : 'text-[#1d1d1f]'}`}>
-                <span>{isConstraint ? '📋' : '🎯'}</span>
+                <span>{isConstraint ? '约束条件' : '目标说明'}</span>
                 <span>{trimmed.replace(/^###\s*/, '')}</span>
               </h3>
             );
@@ -1108,7 +1473,7 @@ desc: 自定义流程步骤与安防、技能联控说明
             const textVal = trimmed.replace(/^(- \*\*触发\*\*:\s*|\*\s*触发:\s*|\*\s*触发：\s*)/, '').trim();
             return (
               <div key={idx} className="my-2.5 text-left font-sans text-xs text-slate-650 flex items-start gap-1">
-                <span className="text-slate-800 font-bold shrink-0">⚡ 触发：</span>
+                <span className="text-slate-800 font-bold shrink-0">触发：</span>
                 <span className="text-slate-600 font-semibold">{textVal}</span>
               </div>
             );
@@ -1204,7 +1569,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                   activePanelTab === 'persona' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>🤖</span> 人设
+                <User className="w-3.5 h-3.5" /> 人设
               </button>
               <button
                 onClick={() => setActivePanelTab('script')}
@@ -1212,7 +1577,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                   activePanelTab === 'script' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>📜</span> 行为剧本
+                <BookOpen className="w-3.5 h-3.5" /> 行为剧本
               </button>
               <button
                 onClick={() => setActivePanelTab('task')}
@@ -1220,7 +1585,7 @@ desc: 自定义流程步骤与安防、技能联控说明
                   activePanelTab === 'task' ? 'bg-[#1d1d1f] text-white shadow-xs' : 'bg-transparent text-slate-550 hover:text-slate-800'
                 }`}
               >
-                <span>📋</span> 任务书
+                <FileText className="w-3.5 h-3.5" /> 任务书
               </button>
             </div>
           </div>
@@ -1267,13 +1632,13 @@ desc: 自定义流程步骤与安防、技能联控说明
                     );
                   })}
 
-                  {/* 🆕 新增剧本按钮 */}
+                  {/* 新增剧本按钮 */}
                   <button 
                     onClick={handleAddNewScript}
-                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-slate-550 hover:bg-white hover:text-black flex items-center justify-center transition-all cursor-pointer font-bold text-xs"
+                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-slate-555 hover:bg-white hover:text-black flex items-center justify-center transition-all cursor-pointer font-bold text-xs"
                     title="可在行为剧本中新增一个空白 markdown 白皮书"
                   >
-                    ➕
+                    <Plus className="w-4 h-4" />
                   </button>
                 </div>
 
@@ -1496,17 +1861,47 @@ desc: 自定义流程步骤与安防、技能联控说明
                       </div>
                     </div>
 
-                    <div className="relative flex-1 min-h-0 flex flex-col">
+                    <div className={`relative flex-1 min-h-0 border rounded-2xl bg-white shadow-inner overflow-hidden flex flex-col transition-all duration-200 ${
+                      isTextareaFocused 
+                        ? 'ring-2 ring-slate-900/10 border-slate-800' 
+                        : 'border-[#e6e6eb]'
+                    }`}>
+                      {/* ⚙️ 底层语法高亮显示板，仅作背景视觉层 */}
+                      <div 
+                        ref={highlightOverlayRef}
+                        className="absolute inset-0 w-full h-full p-5 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all overflow-y-auto pointer-events-none select-none text-left"
+                        style={{
+                          scrollbarWidth: 'none',
+                          msOverflowStyle: 'none'
+                        }}
+                        dangerouslySetInnerHTML={{ 
+                          __html: getHighlightedHtml(docContents[currentScriptView] || '') 
+                        }}
+                      />
+
+                      {/* ⚙️ 顶层透明的活动输入 TextArea 层 */}
                       <textarea
                         ref={textareaRef}
-                        className="flex-1 min-h-0 border border-[#e6e6eb] rounded-2xl bg-white p-5 font-mono text-xs leading-relaxed text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-800 select-text resize-none overflow-y-auto shadow-inner"
-                        placeholder="编写属于您的智能体 Markdown 解析剧本... (输入 / 快速唤起动作与技能)"
+                        className="absolute inset-0 w-full h-full p-5 font-mono text-xs leading-relaxed bg-transparent text-transparent caret-slate-800 focus:outline-none select-text resize-none overflow-y-auto"
+                        placeholder=""
                         value={docContents[currentScriptView] || ''}
+                        onScroll={(e) => {
+                          if (highlightOverlayRef.current) {
+                            highlightOverlayRef.current.scrollTop = e.currentTarget.scrollTop;
+                          }
+                        }}
+                        onFocus={() => setIsTextareaFocused(true)}
+                        onBlur={() => setIsTextareaFocused(false)}
                         onChange={(e) => {
                           const val = e.target.value;
                           if (propSetDocContents) {
                             propSetDocContents(prev => ({ ...prev, [currentScriptView]: val }));
                           }
+                          setTimeout(() => {
+                            if (textareaRef.current && highlightOverlayRef.current) {
+                              highlightOverlayRef.current.scrollTop = textareaRef.current.scrollTop;
+                            }
+                          }, 0);
 
                           const selStart = e.target.selectionStart;
                           if (!slashMenu) {
@@ -1672,78 +2067,285 @@ desc: 自定义流程步骤与安防、技能联控说明
             /* ================== 下半段: 任务书主工作台 ================== */
             <div className="px-5 pb-4 pt-1 flex flex-col gap-3 flex-1 min-h-0 overflow-hidden font-sans">
               
+              {/* 1. 任务书动态 Tabs 排布排控制区 */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 font-sans border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shadow-[inset_0_1.5px_3px_rgba(0,0,0,0.03)] border border-[#e6e6eb] flex-wrap max-w-full">
+                  {Object.keys(taskContents || {}).map((key, index) => {
+                    const isActive = currentTaskView === key;
+                    const displayName = getTaskBookName(key, (taskContents && taskContents[key]) || '');
+                    
+                    return (
+                      <div 
+                        key={key}
+                        onClick={() => {
+                          if (setCurrentTaskView) {
+                            setCurrentTaskView(key);
+                          }
+                        }}
+                        className={`h-7 px-3 rounded-lg text-[11px] font-bold cursor-pointer transition-all flex items-center gap-1.5 select-none relative ${
+                          isActive 
+                            ? 'bg-[#1d1d1f] text-white shadow-xs border border-transparent font-extrabold shadow-[0_2px_4px_rgba(0,0,0,0.15)]' 
+                            : 'bg-transparent text-slate-500 hover:bg-white/50 hover:text-slate-800'
+                        }`}
+                      >
+                        <span className="truncate max-w-[130px]">{index + 1}. {displayName}</span>
+                        
+                        {/* 删除当前任务书 */}
+                        <span 
+                          onClick={(e) => handleDeleteTaskBook(key, e)}
+                          className={`w-3.5 h-3.5 rounded-full flex items-center justify-center transition-all font-extrabold text-[8px] leading-none shrink-0 ${
+                            isActive
+                              ? 'bg-white/20 hover:bg-red-500 hover:text-white text-white/80'
+                              : 'bg-slate-200/50 hover:bg-red-500 hover:text-white text-slate-500'
+                          }`}
+                          title="删除此任务书"
+                        >
+                          ×
+                        </span>
+                      </div>
+                    );
+                  })}
 
+                  {/* 新增任务书 */}
+                  <button 
+                    onClick={handleAddNewTaskBook}
+                    className="h-7 w-7 rounded-lg border-0 bg-transparent text-slate-500 hover:bg-white hover:text-black flex items-center justify-center transition-all cursor-pointer font-bold text-xs"
+                    title="可在任务书中新增一个 JSON 配置文件"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
 
-              {/* 编辑与展示核心区 - 要占满剩余高度 */}
+              {/* 2. 编辑与展示、历史记录核心区 */}
               <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-xs flex flex-col flex-1 min-h-0 font-sans">
                 
-                {/* 虚拟 IDE 标题页签 */}
-                <div className="h-9.5 px-4 bg-slate-50 border-b border-slate-105 flex items-center justify-between shrink-0 font-sans">
-                  <div className="flex items-center gap-1.5 flex-row">
+                {/* 虚拟 IDE 标题页签与高级控制栏 */}
+                <div className="h-10 px-4 bg-slate-50 border-b border-slate-105 flex items-center justify-between shrink-0 font-sans gap-4 overflow-x-auto scrollbar-none flex-nowrap">
+                  <div className="flex items-center gap-2 flex-row shrink-0">
                     <span className="text-[10px] font-extrabold text-blue-500 bg-blue-50 border border-blue-105 px-1.5 py-0.5 rounded uppercase font-mono scale-90">
                       EDITABLE
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500 font-mono">/etc/mqtt/task_schedule_blueprint.json</span>
+                    <span className="text-[11px] font-extrabold text-slate-600 font-mono italic truncate max-w-[120px] md:max-w-[180px]">
+                      /etc/mqtt/{currentTaskView}.json
+                    </span>
                   </div>
 
-                  {/* 状态切换(唯读/编辑) */}
-                  <button
-                    onClick={() => setIsJsonEditing(!isJsonEditing)}
-                    className={`h-6.5 px-2.5 rounded-lg border transition-all text-[11px] font-bold cursor-pointer flex items-center gap-1 flex-row font-sans ${
-                      isJsonEditing 
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
-                        : 'border-[#e6e6eb] bg-white hover:bg-slate-50 text-slate-600'
-                    }`}
-                  >
-                    {isJsonEditing ? (
-                      <>
-                        <span>💾 保存锁定</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>🖋️ 编辑配置</span>
-                      </>
-                    )}
-                  </button>
+                  {/* 历史撤销、重做、格式化、插入行动的核心工具栏 */}
+                  <div className="flex items-center gap-1.5 shrink-0 flex-row flex-nowrap">
+                    {/* Undo / Redo */}
+                    <button
+                      onClick={handleUndo}
+                      disabled={(!taskUndoStack || !taskUndoStack[currentTaskView] || taskUndoStack[currentTaskView].length === 0)}
+                      className="h-6.5 px-2 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:hover:bg-white border border-[#e6e6eb] rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 transition-all shrink-0"
+                      title="撤销 (Undo)"
+                    >
+                      <Undo2 className="w-3 h-3" /> 撤销
+                    </button>
+                    <button
+                      onClick={handleRedo}
+                      disabled={(!taskRedoStack || !taskRedoStack[currentTaskView] || taskRedoStack[currentTaskView].length === 0)}
+                      className="h-6.5 px-2 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:hover:bg-white border border-[#e6e6eb] rounded-lg text-[10px] font-bold cursor-pointer flex items-center gap-1 transition-all shrink-0"
+                      title="重做 (Redo)"
+                    >
+                      <Redo2 className="w-3 h-3" /> 重做
+                    </button>
+
+                    <div className="h-4 w-[1px] bg-slate-200 shrink-0" />
+
+                    {/* Format / Minify */}
+                    <button
+                      onClick={handlePrettifyJson}
+                      className="h-6.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-[#e6e6eb] rounded-lg text-[10px] font-bold cursor-pointer transition-all shrink-0"
+                      title="自动排版美化 JSON"
+                    >
+                      <Sparkles className="w-3 h-3" /> 格式化
+                    </button>
+                    <button
+                      onClick={handleMinifyJson}
+                      className="h-6.5 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-[#e6e6eb] rounded-lg text-[10px] font-bold cursor-pointer transition-all shrink-0 hidden sm:inline-block"
+                      title="极致压缩清除空白符"
+                    >
+                      <Minimize2 className="w-3 h-3" /> 压缩
+                    </button>
+
+                    <div className="h-4 w-[1px] bg-slate-200 hidden sm:inline-block shrink-0" />
+
+                    {/* Quick snippet insertion dropdown */}
+                    <div className="relative group/snippet font-sans shrink-0">
+                      <button className="h-6.5 px-2 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-lg text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1">
+                        <Plus className="w-3 h-3" /> 插入节点 <ChevronDown className="w-2.5 h-2.5 opacity-60 ml-0.5" />
+                      </button>
+                      <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-[0_4px_16px_rgba(0,0,0,0.08)] py-1 hidden group-hover/snippet:block hover:block z-45 text-left font-sans">
+                        <div className="px-2.5 py-1 text-[9px] uppercase font-bold text-slate-400 border-b border-slate-50 mb-1">
+                          快速流插桩模板
+                        </div>
+                        {PRESET_TASK_SNIPPETS.map((snip, sIdx) => {
+                          const IconComponent = 
+                            snip.type === 'pose' ? Smile :
+                            snip.type === 'audio' ? AudioLines :
+                            snip.type === 'navi' ? Compass :
+                            Zap;
+                          
+                          return (
+                            <div
+                              key={sIdx}
+                              onClick={() => handleInsertSnippet(snip.obj)}
+                              className="px-3 py-1.5 hover:bg-slate-50 cursor-pointer transition-colors flex items-center gap-2"
+                            >
+                              <div className="w-5.5 h-5.5 rounded bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
+                                <IconComponent className="w-3 h-3 text-slate-500" />
+                              </div>
+                              <div className="flex flex-col gap-0.5 min-w-0">
+                                <span className="text-[11px] font-bold text-slate-800 leading-none">{snip.label}</span>
+                                <span className="text-[9px] text-slate-400 leading-none truncate">{snip.desc}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="h-4 w-[1px] bg-slate-200 shrink-0" />
+
+                    {/* Version History panel toggle button */}
+                    <button
+                      onClick={() => setShowHistorySidebar(!showHistorySidebar)}
+                      className={`h-6.5 px-2 rounded-lg border transition-all text-[10px] font-bold cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                        showHistorySidebar 
+                          ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' 
+                          : 'border-[#e6e6eb] bg-white hover:bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      <History className="w-3 h-3" /> 历史版本 ({(taskSnapshots[currentTaskView] || []).length})
+                    </button>
+                  </div>
                 </div>
 
-                {/* 编辑或者高亮代码框 */}
-                <div id="task-book-view-container" className="relative flex-1 min-h-0 overflow-y-auto bg-slate-50/30">
-                  {isJsonEditing ? (
-                    <div className="flex h-full min-h-0">
-                      {/* 虚拟行号 */}
-                      <div className="w-10 bg-slate-50/50 border-r border-[#e6e6eb] flex flex-col pt-3 pb-3 text-right pr-2 text-slate-350 select-none font-mono text-[11px] leading-relaxed">
-                        {jsonText.split('\n').map((_, idx) => (
-                          <div key={idx} className="h-[21px]">{idx + 1}</div>
-                        ))}
-                      </div>
-                      
-                      {/* 输入区 */}
-                      <textarea
-                        value={jsonText}
-                        onChange={(e) => updateJsonAndTasks(e.target.value)}
-                        placeholder="请输入符合规范的标准 JSON 数据数组..."
-                        spellCheck="false"
-                        className="flex-1 border-0 outline-none p-3 text-xs bg-transparent text-slate-800 font-mono leading-relaxed resize-none focus:ring-0 select-text text-left self-stretch h-full"
-                      />
+                {/* 主代码区和历史侧边栏组合 */}
+                <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative">
+                  
+                  {/* Left: Code Editor Container */}
+                  <div className="flex-1 min-h-0 flex flex-col bg-slate-50/20 relative">
+                    <div id="task-book-view-container" className="flex-1 min-h-0 overflow-y-auto w-full">
+                      {isJsonEditing ? (
+                        <div className="flex h-full min-h-0">
+                          {/* 虚拟行号 */}
+                          <div className="w-9 bg-slate-50 border-r border-[#e6e6eb]/80 flex flex-col pt-3 pb-3 text-right pr-2 text-slate-350 select-none font-mono text-[10px] leading-relaxed shrink-0">
+                            {jsonText.split('\n').map((_, idx) => (
+                              <div key={idx} className="h-[21px]">{idx + 1}</div>
+                            ))}
+                          </div>
+                          
+                          {/* 输入区 textarea */}
+                          <textarea
+                            id="task-textarea"
+                            value={jsonText}
+                            onChange={(e) => updateJsonAndTasksWithHistory(e.target.value)}
+                            placeholder="请输入符合规范的标准 JSON 数据数组..."
+                            spellCheck="false"
+                            className="flex-1 border-0 outline-none p-3 text-xs bg-transparent text-slate-800 font-mono leading-relaxed resize-none focus:ring-0 select-text text-left self-stretch h-full min-h-[400px] font-sans"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          {renderHighlightedJSON(jsonText)}
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div>
-                      {renderHighlightedJSON(jsonText)}
+                  </div>
+
+                  {/* Right: History Version Sidebar Drawer with smooth animation */}
+                  {showHistorySidebar && (
+                    <div className="w-68 border-l border-slate-200 bg-slate-50 flex flex-col min-h-0 shrink-0 font-sans animate-fade-in">
+                      {/* Sidebar Header */}
+                      <div className="p-3 border-b border-slate-200 bg-slate-105 flex items-center justify-between shrink-0">
+                        <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-slate-500 shrink-0" /> 历史备份快照
+                        </span>
+                        <button 
+                          onClick={() => setShowHistorySidebar(false)}
+                          className="text-slate-400 hover:text-slate-600 bg-transparent border-0 cursor-pointer text-xs p-1"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      {/* Manual backup form */}
+                      <div className="p-3 border-b border-slate-200 bg-white shrink-0 flex flex-col gap-1.5">
+                        <span className="text-[10px] font-extrabold text-slate-400 tracking-wider">创建新的备份快照</span>
+                        <div className="flex gap-1">
+                          <input 
+                            type="text" 
+                            placeholder="如: 修改迎宾动作" 
+                            value={newSnapshotNote}
+                            onChange={(e) => setNewSnapshotNote(e.target.value)}
+                            className="flex-1 text-[11px] px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-slate-400 font-sans"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleCreateSnapshot();
+                            }}
+                          />
+                          <button 
+                            onClick={handleCreateSnapshot}
+                            className="px-2.5 py-1 bg-[#1d1d1f] hover:bg-black text-white text-[11px] font-bold rounded-lg border-0 cursor-pointer transition-all shrink-0"
+                          >
+                            备份
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Backup Timeline scroll region */}
+                      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2 bg-slate-50/50">
+                        {(taskSnapshots[currentTaskView] || []).length === 0 ? (
+                          <div className="text-center py-8 text-slate-400 text-[10px] italic">
+                            暂无历史版本记录
+                          </div>
+                        ) : (
+                          (taskSnapshots[currentTaskView] || []).map((backup) => (
+                            <div 
+                              key={backup.id} 
+                              className="p-2.5 bg-white border border-slate-200/80 rounded-xl hover:border-slate-300 transition-all shadow-[0_1px_2px_rgba(0,0,0,0.01)] flex flex-col gap-1 text-left relative"
+                            >
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono shrink-0">
+                                <span className="font-semibold">{backup.timestamp}</span>
+                                <span className="bg-slate-100 px-1 py-0.2 rounded font-extrabold text-[9px] text-slate-500 font-mono">
+                                  {backup.nodeCount} 节点
+                                </span>
+                              </div>
+                              <p className="text-[11px] font-bold text-slate-700 m-0 leading-normal truncate font-sans">
+                                {backup.note}
+                              </p>
+                              
+                              <div className="flex justify-end gap-1 mt-1.5">
+                                <button
+                                  onClick={() => {
+                                    updateJsonAndTasksWithHistory(backup.text, true);
+                                  }}
+                                  className="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border-0 rounded text-[10px] font-semibold text-slate-600 transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                                  title="将当前 JSON 编辑器回滚至此版本"
+                                >
+                                  <Undo2 className="w-3 h-3 text-slate-550 shrink-0" /> 恢复此版本
+                                </button>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   )}
+
                 </div>
 
                 {/* 底部实时状态语法检测反馈 */}
                 <div className="h-9 px-4 border-t border-slate-150 flex items-center justify-between text-[11px] font-bold font-mono bg-white shrink-0">
                   {jsonError ? (
                     <div className="text-red-500 flex items-center gap-1.5 py-0.5 animate-pulse text-left flex-row font-sans">
-                      <span>❌</span>
+                      <ShieldAlert className="w-3.5 h-3.5 text-red-500 shrink-0" />
                       <span className="truncate max-w-[500px]">{jsonError}</span>
                     </div>
                   ) : (
                     <div className="text-emerald-600 flex items-center gap-1.5 py-0.5 text-left flex-row font-sans">
-                      <span>🟢</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                       <span>JSON 语法规范验证通过 (Active Array Nodes: {tasks.length})</span>
                     </div>
                   )}

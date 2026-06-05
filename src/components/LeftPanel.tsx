@@ -336,7 +336,7 @@ export default function LeftPanel({
   const showTokenPreview = ['迎宾流程', '休息区指引', '公司介绍'].includes(inputText.trim());
 
   return (
-    <aside className={`${isFullWidth ? 'w-full max-w-2xl border-x' : 'w-[450px] border-r'} shrink-0 border-[#e6e6eb] flex flex-col bg-white h-full relative z-10 transition-all duration-325 select-none`}>
+    <aside className={`${isFullWidth ? 'w-full max-w-2xl border-none' : 'w-[450px] border-r border-[#e6e6eb]'} shrink-0 flex flex-col bg-white h-full relative z-10 transition-all duration-325 select-none`}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -375,7 +375,7 @@ export default function LeftPanel({
                 // 系统警告（确认删除地图等）
                 if (msg.sender === 'system' && msg.type === 'warning-map') {
                   return (
-                    <div key={idx} className="border border-[#e6e6eb] rounded-2.5xl bg-white p-4.5 shadow-[0_1px_2px_rgba(0,0,0,0.05),_0_6px_20px_rgba(0,0,0,0.04)] flex flex-col gap-3.5">
+                    <div key={idx} className="border-0 rounded-2.5xl bg-white p-4.5 shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_6px_20px_rgba(0,0,0,0.02)] flex flex-col gap-3.5 animate-slide-in">
                       <div className="text-sm text-[#1d1d1f] font-medium leading-relaxed">{msg.text}</div>
                       <div className="flex items-center gap-2.5">
                         <button 
@@ -410,12 +410,12 @@ export default function LeftPanel({
                 return (
                   <div 
                     key={idx}
-                    className={`border rounded-2.5xl px-4.5 py-3 text-sm leading-relaxed shadow-[0_1px_2px_rgba(0,0,0,0.05),_0_6px_20px_rgba(0,0,0,0.04)] transition-all whitespace-pre-wrap ${
+                    className={`border-0 rounded-2.5xl px-4.5 py-3 text-sm leading-relaxed shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_6px_20px_rgba(0,0,0,0.02)] transition-all whitespace-pre-wrap ${
                       isUser
-                        ? 'bg-[#eaf2ff] border-[#9fc0ff] text-[#2a5bd7] self-end max-w-[88%]' 
+                        ? 'bg-[#eaf2ff]/80 text-[#2a5bd7] self-end max-w-[88%]' 
                         : isSpecialGuide 
-                          ? 'bg-purple-50/50 border-purple-200 text-purple-950 font-medium'
-                          : 'bg-white border-[#e6e6eb] text-[#1d1d1f]'
+                          ? 'bg-purple-50/40 text-purple-950 font-medium'
+                          : 'bg-white text-[#1d1d1f]'
                     }`}
                   >
                     {msg.text}

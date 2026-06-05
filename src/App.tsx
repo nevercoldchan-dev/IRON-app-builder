@@ -117,6 +117,39 @@ const AUTO_TYPE_STEPS = [
   { text: "创建1个机器人导览应用", pills: undefined, delay: 1200 }
 ];
 
+export const MAP_OPTIONS = [
+  { id: '博物馆/美术馆', title: '博物馆/美术馆', desc: '适用于文化博展，支持精准展品讲解和多重路线导游。', recommend: true, icon: '🏛️' },
+  { id: '科技产业园', title: '科技产业园', desc: '适用于户外园区，着重机器人长路径路径寻路与室外避障。', recommend: true, icon: '🏢' },
+  { id: '智慧写字楼', title: '智慧写字楼', desc: '高精建模，联动前台迎宾闸机，实现楼层联动巡逻。', recommend: false, icon: '🏪' },
+  { id: '历史古镇景区', title: '历史古镇景区', desc: '针对石板路、特色历史景点，提供生动风俗科普和路线引导。', recommend: false, icon: '🏞️' },
+  { id: '室内外通用SLAM测试场', title: '室内外通用SLAM测试场', desc: '全地标覆盖，高敏度地标雷达，用于高级运动性能和接口调试。', recommend: false, icon: '📡' },
+];
+
+export const KNOWLEDGE_OPTIONS = [
+  { id: '常规讲解问答库', title: '常规讲解问答库', desc: '包含日常寒暄、通识问题、系统帮助等高频交互内容。', recommend: true, icon: '📚' },
+  { id: '展品/展项背景文案', title: '展品/展项背景文案', desc: '关于特定展览物或高技术设备的深度学术级资料。', recommend: true, icon: '🖼️' },
+  { id: '安全应急引导须知', title: '安全应急引导须知', desc: '突发灾害、人流拥挤、避障、离场逃生路线和广播词库。', recommend: false, icon: '⚠️' },
+  { id: '关联设备API文档说明', title: '关联设备API文档说明', desc: '智能家居、工控PLC、大屏幕系统外联调用的操作词云手册。', recommend: false, icon: '⚙️' },
+  { id: '趣味互动彩蛋语料', title: '趣味互动彩蛋语料', desc: '冷笑话、魔性舞蹈报幕词、幽默段子与情感化机智应对语。', recommend: false, icon: '🌟' },
+];
+
+export const ACTION_OPTIONS = [
+  { id: 'wave_hand', title: '招手致意 (wave_hand)', desc: '常用于欢迎寒暄与告别致谢，展示亲和力。', recommend: true, icon: '👋' },
+  { id: 'point_front', title: '导览指引 (point_front)', desc: '指向前方特定标的或带路指引时的手势动作。', recommend: true, icon: '🧭' },
+  { id: 'bow_bowing', title: '鞠躬致谢 (bow_bowing)', desc: '在深鞠躬、表达特别感谢或讲解结束后的高度礼貌手势。', recommend: false, icon: '🙇' },
+  { id: 'nod', title: '点头动作 (nod)', desc: '认可、倾听或打招呼时的微幅点头。', recommend: false, icon: '🙆' },
+  { id: 'thinking', title: '思考状态 (thinking)', desc: '单手托腮或原地踱步思考，增强AI计算中拟人感。', recommend: false, icon: '🤔' },
+  { id: 'dance', title: '随机跳舞 (dance)', desc: '活跃现场气氛时的创意大跨步舞蹈展示。', recommend: false, icon: '💃' },
+];
+
+export const SKILL_OPTIONS = [
+  { id: 'navigate_to_target', title: '导航寻路能力 (navigate_to_target)', desc: '下发特定点位名称，驱动轮式或双足底盘稳定自主移动可达。', recommend: true, icon: '🗺️' },
+  { id: 'iot.device_control', title: 'IoT设备控制 (iot.device_control)', desc: '通过智能网关联控灯光、遮阳帘、大屏幕等多媒体硬件。', recommend: true, icon: '🔌' },
+  { id: 'speak', title: '语音播报播放 (speak)', desc: '自研TTS高保真拟人发声、语调语速及情感等级动态可设。', recommend: true, icon: '🗣️' },
+  { id: 'screen_show', title: '表情大屏交互 (screen_show)', desc: '在脸部或腹部副屏上投影情感拟人表情动画或PPT内容。', recommend: false, icon: '🖥️' },
+  { id: 'obstacle_avoid', title: '避障重规划功能 (obstacle_avoid)', desc: '遇到前方临时障碍物时紧急停障及自研动态巡航绕行。', recommend: false, icon: '🛡️' },
+];
+
 export default function App() {
   // 5 阶段高保真丝滑状态控制：'initial' | 'aligning' | 'clarifying' | 'compiling' | 'workspace'
   const [appState, setAppState] = useState<'initial' | 'aligning' | 'clarifying' | 'compiling' | 'workspace'>('initial');
@@ -154,14 +187,27 @@ export default function App() {
 
   // 需求澄清的新高保真交互状态
   const [clarityStep, setClarityStep] = useState<number>(1);
-  const [step1Selected, setStep1Selected] = useState<number>(1);
-  const [step1CustomText, setStep1CustomText] = useState<string>('');
-  
-  const [step2Selected, setStep2Selected] = useState<number>(2);
-  const [step2CustomText, setStep2CustomText] = useState<string>('');
-  
-  const [step3Selected, setStep3Selected] = useState<number>(1);
-  const [step3CustomText, setStep3CustomText] = useState<string>('');
+  const [selectedMap, setSelectedMap] = useState<string>('博物馆/美术馆'); // 单选
+  const [selectedKnowledge, setSelectedKnowledge] = useState<string[]>(['常规讲解问答库', '展品/展项背景文案']); // 多选
+  const [selectedActions, setSelectedActions] = useState<string[]>(['wave_hand', 'point_front']); // 多选
+  const [selectedSkills, setSelectedSkills] = useState<string[]>(['navigate_to_target', 'iot.device_control', 'speak']); // 多选
+
+  const [isMapExpanded, setIsMapExpanded] = useState<boolean>(false);
+  const [isKnowledgeExpanded, setIsKnowledgeExpanded] = useState<boolean>(false);
+  const [isActionsExpanded, setIsActionsExpanded] = useState<boolean>(false);
+  const [isSkillsExpanded, setIsSkillsExpanded] = useState<boolean>(false);
+  const [clarityModalType, setClarityModalType] = useState<'map' | 'knowledge' | 'action' | 'skill' | null>(null);
+  const [inlineSearchQuery, setInlineSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    setInlineSearchQuery('');
+  }, [clarityModalType]);
+
+  // 二次确认环节（Step 5）每个资源分类的折叠/展开状态
+  const [isConfirmMapOpen, setIsConfirmMapOpen] = useState<boolean>(false);
+  const [isConfirmKnowledgeOpen, setIsConfirmKnowledgeOpen] = useState<boolean>(false);
+  const [isConfirmActionsOpen, setIsConfirmActionsOpen] = useState<boolean>(false);
+  const [isConfirmSkillsOpen, setIsConfirmSkillsOpen] = useState<boolean>(false);
 
   // 状态菜单与浮沉控件交互控制
   const [isStepMenuOpen, setIsStepMenuOpen] = useState<boolean>(false);
@@ -382,8 +428,60 @@ keywords:
     }
   ];
 
-  const [jsonText, setJsonText] = useState(() => JSON.stringify(appInitialTasks, null, 2));
+  const appInitialTasksFacility = [
+    { 
+      id: 'T1', 
+      name: '区域设施指引与迎新', 
+      desc: '引导访客去往前厅咨询。支持大堂周边配套洗手间、VIP茶休室的安全避障路径讲解。', 
+      actions: [
+        'inte.hri.special_pose(action="wave_hand")',
+        'iot.query_nearby_facilities()',
+        'inte.hri.say_something(text="您好，欢迎参观！洗手间和茶水歇息间在右侧走廊走到底。需要我带您过去吗？")'
+      ],
+      status: 'active', 
+      priority: 'P0' 
+    }
+  ];
+
+  const appInitialTasksPatrol = [
+    {
+      id: 'T1',
+      name: '闭馆防盗与安防巡检检测',
+      desc: '每日深夜闭馆后的大堂激光巡更，利用红外与视觉测绘，严密防范陌生人侵入大厅。',
+      actions: [
+        'navi.locomotion.navigate_to_target(target_name="门口")',
+        'inte.hri.special_pose(action="thinking")',
+        'hri.call_human()'
+      ],
+      status: 'active',
+      priority: 'P0'
+    }
+  ];
+
+  const [taskContents, setTaskContents] = useState<Record<string, string>>(() => ({
+    defaultTask: JSON.stringify(appInitialTasks, null, 2),
+    facilityTask: JSON.stringify(appInitialTasksFacility, null, 2),
+    nightPatrolTask: JSON.stringify(appInitialTasksPatrol, null, 2)
+  }));
+  const [currentTaskView, setCurrentTaskView] = useState<string>('defaultTask');
+
+  const [jsonText, setJsonText] = useState(() => taskContents[currentTaskView]);
   const [tasks, setTasks] = useState(appInitialTasks);
+
+  // Synchronize standard single-view states (jsonText and tasks) whenever currentTaskView or local text changes
+  useEffect(() => {
+    const text = taskContents[currentTaskView] || '';
+    setJsonText(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed === 'object' && parsed !== null) {
+        setTasks(Array.isArray(parsed) ? parsed : (parsed.actions || []));
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [currentTaskView]);
+
 
   // Modals控制状态
   const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
@@ -470,213 +568,31 @@ keywords:
 
   const handleConfirmMapDelete = () => {
     setMessages(prev => prev.filter(m => m.type !== 'warning-map'));
-    setResourceSections(prev => prev.map(sec => {
-      if (sec.id === 'map') {
-        return { ...sec, items: [] };
-      }
-      return sec;
-    }));
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'bot' as const,
-          text: `已删除物理地图资源与相关的标志点和关联任务。`
-        }
-      ]);
-    }, 300);
+    setResourceSections(prev => prev.map(s => s.id === 'map' ? { ...s, items: [] } : s));
   };
 
-  // 绑定的地图/知识库资源一键热替换，流式更新行为剧本和任务书
-  const handleResourceReplacementConfirm = (category: string, oldItem: string, newItem: string) => {
-    // 1. 追加用户对话消息
-    const categoryName = category === 'map' ? '地图' : '知识库';
-    setMessages(prev => [
-      ...prev,
-      {
-        sender: 'user' as const,
-        text: `🔄 一键热替换当前绑定的${categoryName}：将 「${oldItem}」 替换为 「${newItem}」`
-      }
-    ]);
-
-    // 2. 0.6s 后：Agent 思考状态启动
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'system' as const,
-          text: `🤖 IRON 正在分析物理环境转译链路，进行核心编排库编译对齐...`
-        }
-      ]);
-    }, 600);
-
-    // 3. 1.8s 后：第一阶段流式更新行为剧本并高亮对应面板
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'bot' as const,
-          text: `🔄 [1/3] 正在对齐新物理实体「${newItem}」在物理环境与行为剧本中的地标索引...`
-        }
-      ]);
-
-      if (category === 'map') {
-        // 更新 script
-        setDocContents(prev => {
-          const next = { ...prev };
-          next.companyIntro = next.companyIntro
-            .replace('我们现在将前往端侧智驾 product 展示区', `[${newItem}] 我们已重新对齐高精 SLAM 地图定位，即将寻航前往最新智驾展厅`);
-          return next;
-        });
-
-        // 切换到 script 面板展示更新
-        setActivePanelTab('script');
-        setCurrentScriptView('companyIntro');
-
-        // 更新 task JSON
-        setTasks(prev => {
-          const next = prev.map(t => {
-            if (t.id === 'T2') {
-              return {
-                ...t,
-                desc: `根据「${newItem}」最新激光扫描路径，深度指引发车体验并调用外设播放大屏演示视频。`,
-                actions: [
-                  'inte.hri.special_pose(action="talk_gesture")',
-                  'iot.trigger_screen()',
-                  'inte.hri.special_pose(action="screen_show")',
-                  `inte.hri.say_something(text="在 [${newItem}] 环境下，请看前方为您准备的智驾说明视频。")`
-                ]
-              };
-            }
-            return t;
-          });
-          setJsonText(JSON.stringify(next, null, 2));
-          return next;
-        });
-      } else { // knowledge
-        setDocContents(prev => {
-          const next = { ...prev };
-          next.companyIntro = next.companyIntro
-            .replace('科普 [三电与热管理知识库]', `科普 [${newItem}]`);
-          return next;
-        });
-
-        setTasks(prev => {
-          const next = prev.map(t => {
-            if (t.id === 'T3') {
-              return {
-                ...t,
-                desc: `在「${newItem}」内进行内容检索与情境互动，并调用打印宿主外设打印凭证。`
-              };
-            }
-            return t;
-          });
-          setJsonText(JSON.stringify(next, null, 2));
-          return next;
-        });
-      }
-    }, 1800);
-
-    // 4. 3.2s 后：第二阶段物理任务书流重新对齐
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'bot' as const,
-          text: `⚡ [2/3] 底层物联网 IoT 接口绑定成功！物理任务书 JSON 层开始流式重编译并对齐映射关系...`
-        }
-      ]);
-
-      if (category === 'map') {
-        // 切换到任务书面板展示新 JSON 结果
-        setActivePanelTab('task');
-        setDocContents(prev => {
-          const next = { ...prev };
-          next.welcomeFlow = next.welcomeFlow
-            .replace('小鹏科技园迎宾接待机器人', `小鹏迎宾智能接待（依托 「${newItem}」 安全信标规则）`);
-          return next;
-        });
-      } else {
-        // 知识库替换静默更新行为内容，不切换面板页
-        setDocContents(prev => {
-          const next = { ...prev };
-          next.visitorReception = next.visitorReception
-            .replace('大厅洗手间', `结合 [${newItem}]，大厅洗手间`);
-          return next;
-        });
-      }
-    }, 3200);
-
-    // 5. 4.6s 后：对齐编译成功完成
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        {
-          sender: 'bot' as const,
-          text: `✨ [IRON] 物理转译对齐完成！已成功热生成 3 组行为剧本与最新物理任务书 JSON。IoT 设备协议链均已热插拔对齐！🎉`
-        }
-      ]);
-    }, 4600);
-  };
-
-  // 初始提交转移状态到澄清阶段
-  const handleToClarifying = (text: string, tplName?: string) => {
-    const defaultName = tplName || 'AI导览机器人';
-    const finalPrompt = text.trim() || '创建一个AI导览机器人应用';
-    setSubmittedPromptText(finalPrompt);
-    setClarificationForm(prev => ({
-      ...prev,
-      appName: defaultName + '应用'
-    }));
-    setClarityStep(1); // 重置到第一步
-    setAligningTimer(0.0);
-
-    // 把初始输入的文字作为第一条用户消息写入消息队列，实现对话框下移，上方是对话记录
+  const handleToClarifying = (prompt: string, tplAppName?: string) => {
+    setSubmittedPromptText(prompt);
+    if (tplAppName) {
+      setClarificationForm(prev => ({ ...prev, appName: tplAppName }));
+    }
+    
+    // 初始化对话记录：保留系统首条消息，追加用户的自然语言指令和智能助手响应，平滑切入需求编排。
     setMessages([
-      { sender: 'user' as const, text: finalPrompt },
-      { sender: 'bot' as const, text: `已收到您的指令！已为您匹配【${defaultName}】基本导览框架。让我们在下方细化一下您的系统设定。` },
-      { sender: 'bot' as const, type: 'clarify-form' as const, text: '' }
+      { sender: 'bot', text: '你好！我是你的智能导览编排助手。可以直接输入特定流程如“迎宾流程”、“休息区指引”触发智能节点。' },
+      { sender: 'user', text: prompt },
+      { sender: 'bot', text: `已经收到您的部署指令：“${prompt}”。\n\n系统已为您解析了相关的导览属性！请在下方卡片中进行高精地图、讲解知识库等核心资源的装配与确认。确认完成后，我将为您自动生成并编译出初始运行方案。` },
+      { sender: 'system' as const, text: '', type: 'clarify-form' }
     ]);
 
     setAppState('clarifying');
+    setClarityStep(1);
   };
 
-  // 1键高拟真演示核心流程 (打字 -> 诊断对齐 -> 剧本编译)
-  const startSimulatedTyping = () => {
-    if (isAutoTyping) return;
-    setIsAutoTyping(true);
-    setAutoTypeIndex(0);
-    setAppState('initial');
-    setInitialInput('');
-    setPredictionPills(undefined);
-
-    let currentStep = 0;
-    const runNextStep = () => {
-      if (currentStep >= AUTO_TYPE_STEPS.length) {
-        setIsAutoTyping(false);
-        handleToClarifying('创建一个AI导览机器人应用', 'AI导览机器人');
-        return;
-      }
-      const step = AUTO_TYPE_STEPS[currentStep];
-      setInitialInput(step.text);
-      setPredictionPills(step.pills);
-      if (step.activePillIndex !== undefined) {
-        setPredictionPillActive(step.activePillIndex);
-      }
-      setAutoTypeIndex(currentStep + 1);
-      currentStep++;
-      setTimeout(runNextStep, step.delay);
-    };
-
-    setTimeout(runNextStep, 300);
-  };
-
-  // 展开、收起 Copilot 信息面板
   const toggleCopilot = () => {
     setIsCopilotExpanded(prev => !prev);
   };
 
-  // 弹窗与外设附件逻辑
   const handleOpenAttachmentDialog = (type: 'script' | 'skill') => {
     setFileModalType(type);
     setIsFileModalOpen(true);
@@ -684,97 +600,101 @@ keywords:
 
   const handleCancelMapDelete = () => {
     setMessages(prev => prev.filter(m => m.type !== 'warning-map'));
+  };
+
+  const handleRestoreHistory = (historyId: string) => {
+    setSelectedHistoryId(historyId);
     setMessages(prev => [
       ...prev,
-      { sender: 'bot' as const, text: '已取消删除地图底图计划。' }
+      { sender: 'system' as const, text: `成功从历史记录还原状态！已调阅历史记录 #${historyId}。` }
     ]);
   };
 
-  const handleRestoreHistory = (id: string) => {
-    const record = initialChatHistory.find(r => r.id === id);
-    if (record && record.messages) {
-      setMessages(record.messages);
-      setChatMode('chat');
-    }
+  const handleResourceReplacementConfirm = (newItems: any) => {
+    setMessages(prev => [
+      ...prev,
+      { sender: 'system' as const, text: '🎉 资源替换与编译载入完成！' }
+    ]);
   };
 
-  const handleFileSelectConfirm = (fileName: string) => {
+  const handleFileSelectConfirm = (file: any) => {
     setIsFileModalOpen(false);
     setMessages(prev => [
       ...prev,
-      {
-        sender: 'bot' as const,
-        text: `已成功解析离线外部源：\n📄 文件: ${fileName}\n状态: 离线编译与资源索引绑定完成！`
-      }
+      { sender: 'system' as const, text: `成功关联本地文件: ${file.name}` }
     ]);
-    setResourceSections(prev => prev.map(sec => {
-      if (fileModalType === 'script' && sec.id === 'knowledge') {
-        return { ...sec, items: [...sec.items, `${fileName} (已解析剧本)`] };
-      }
-      if (fileModalType === 'skill' && sec.id === 'skill') {
-        return { ...sec, items: [...sec.items, `${fileName} (外设接口)`] };
-      }
-      return sec;
-    }));
   };
 
   const handlePublishConfirm = () => {
     setIsPublishModalOpen(false);
-    alert(`发布成功！“${clarificationForm.appName}”已在云端部署完毕。`);
     setMessages(prev => [
       ...prev,
-      {
-        sender: 'bot' as const,
-        text: `🚀 智能导览系统 [${clarificationForm.appName}] 全面发布上线！物理节点状态已全量热推同步。`
-      }
+      { sender: 'system' as const, text: '🟢 应用已成功发布，正同步至现场人形终端！' }
     ]);
   };
 
   const handleSelectMap = (mapName: string) => {
     setIsMapSelectOpen(false);
-    setResourceSections(prev => prev.map(sec => {
-      if (sec.id === 'map') {
-        return { ...sec, items: [mapName] };
-      }
-      return sec;
-    }));
+    setSelectedMap(mapName);
     setMessages(prev => [
       ...prev,
-      {
-        sender: 'bot' as const,
-        text: `实景 Slam 空间底图切换为：【${mapName}】。新的高精拓扑点位已重新计算！`
-      }
+      { sender: 'system' as const, text: `地图底图已切换为: ${mapName}` }
     ]);
   };
 
-  // 需求澄清完成动作，原地快速过渡，内容不变，把方案附于对话最下方
-  const handleCompleteClarification = () => {
-    let sceneName = '';
-    if (step1Selected === 1) sceneName = '博古展馆智能向导';
-    else if (step1Selected === 2) sceneName = '机器人企业导览系统';
-    else if (step1Selected === 3) sceneName = '景区园区漫步指引管';
-    else if (step1Selected === 4) sceneName = '多合一AI通用导游';
-    else sceneName = step1CustomText || '高精细定制导游';
+  const handleStepJump = (st: number) => {
+    setClarityStep(st);
+    setIsStepMenuOpen(false);
+  };
 
-    const finalName = `${sceneName}应用`;
+  const handleCompleteClarification = () => {
+    const finalName = `${selectedMap}智能导览系统`;
+
+    const kbText = selectedKnowledge.join('、');
+    const actText = selectedActions.map(a => {
+      const found = ACTION_OPTIONS.find(o => o.id === a);
+      return found ? found.title.split(' ')[0] : a;
+    }).join('、');
+    const skillText = selectedSkills.map(s => {
+      const found = SKILL_OPTIONS.find(o => o.id === s);
+      return found ? found.title.split(' ')[0] : s;
+    }).join('、');
+
     const updatedForm = {
       appName: finalName,
-      coreScene: step1Selected === 5 ? (step1CustomText || '自定义导览场景') : (step1Selected === 1 ? '文化博古/展馆大厅' : step1Selected === 2 ? '景区物理路径地图/园区' : step1Selected === 3 ? '高新技术楼语参观' : '综合大厅事务导引'),
-      targetAudience: step2Selected === 4 ? (step2CustomText || '特定极客用户') : (step2Selected === 1 ? '技术极客与创作者' : step2Selected === 2 ? '休闲大众游客' : '专家VIP贵宾'),
-      visualStyle: step3Selected === 4 ? (step3CustomText || '极简科技感') : (step3Selected === 1 ? '科技浅色极简主义' : step3Selected === 2 ? '工业硬朗暗黑控制台' : '国学典雅水墨山水'),
-      outputPreference: '可视化剧本方案 (交互大纲)'
+      coreScene: `${selectedMap} (知识库: ${kbText})`,
+      targetAudience: `搭载动作: ${actText}`,
+      visualStyle: `集成技能: ${skillText}`,
+      outputPreference: '智能体拓扑开发方案'
     };
 
     setClarificationForm(updatedForm);
+
+    setResourceSections([
+      { id: 'persona', title: '人设 (Persona)', items: ['智能拟人导览管家'] },
+      { id: 'map', title: '地图 (SLAM Map)', items: [selectedMap] },
+      { id: 'knowledge', title: '知识库 (Knowledge)', items: selectedKnowledge },
+      { id: 'action', title: '动作与姿态 (Action)', items: selectedActions.map(a => {
+          const found = ACTION_OPTIONS.find(o => o.id === a);
+          return found ? found.title : a;
+        }) 
+      },
+      { id: 'skill', title: '技能 (Skill)', items: selectedSkills.map(s => {
+          const found = SKILL_OPTIONS.find(o => o.id === s);
+          return found ? found.title : s;
+        }) 
+      }
+    ]);
 
     setMessages(prev => [
       ...prev,
       { sender: 'system' as const, text: `🎉 需求对齐与澄清：【${finalName}】初始化编译完成！` },
       { sender: 'bot' as const, text: `恭喜！已基于您的偏好成功锁定了完整的智能向导方案。
       
-- 🗺️ 场景设定：${updatedForm.coreScene}
-- 👥 目标受众：${updatedForm.targetAudience}
-- 🎨 视觉调性：${updatedForm.visualStyle}
+- 🗺️ 地图底图：${selectedMap}
+- 📚 关联知识：${kbText}
+- 👋 动作姿态：${actText}
+- 🔌 智能技能：${skillText}
 
 目前系统已切换为 3 分屏空间。整个澄清过程中的对话记录和您的输入框均已安全保留在左屏，没有任何内容丢失。您可以在左侧屏幕继续与我交流微调。` }
     ]);
@@ -784,198 +704,498 @@ keywords:
 
   const renderStepContent = () => {
     if (clarityStep === 1) {
-      // Step 1: 场景选择
-      const step1Options = [
-        { id: 1, title: '文化博古/展馆大厅', desc: '适用于博物馆、美术馆或者科普馆等，支持单品深度讲解和多路线漫步规划。' },
-        { id: 2, title: '景区物理路径地图/园区', desc: '适用于开阔户外或综合园区，强调基于 SLAM 地图的物理长路径巡逻及引导。' },
-        { id: 3, title: '高新技术楼语参观', desc: '企业展厅、楼宇办公自动化，支持与外设接口联动，突显前沿黑科技硬件质感。' },
-        { id: 4, title: '综合大厅事务导引', desc: '综合事务大厅、政务 or 医疗事务中心，智能解答指引与业务导览一体化。' },
-        { id: 5, title: '其他自定义场景设定（请填写）', desc: '自定义导览场景，选中后可在下方输入框进行自主书写补充。' },
-      ];
+      // Step 1: 地图选择（单选）
+      const shownOptions = MAP_OPTIONS.filter(o => o.recommend || selectedMap === o.id);
       return (
         <div className="flex flex-col gap-2.5">
-          {step1Options.map((opt) => (
-            <div
-              key={opt.id}
-              onClick={() => {
-                setStep1Selected(opt.id);
-                const isCustom = opt.id === 5;
-                setClarificationForm(prev => ({
-                  ...prev,
-                  coreScene: isCustom ? (step1CustomText || '自定义导览场景') : opt.title
-                }));
-              }}
-              className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
-                step1Selected === opt.id 
-                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
-                  : 'border-slate-205 hover:border-slate-300 bg-white'
-              }`}
-            >
-              <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step1Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {opt.id}
-              </div>
-              <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-700">{opt.title}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
-              </div>
-              {step1Selected === opt.id && (
-                <Check className="w-4 h-4 text-black shrink-0 self-center" />
-              )}
-            </div>
-          ))}
+          <div className="flex flex-col gap-2.5">
+            {shownOptions.map((opt) => {
+              const isSelected = selectedMap === opt.id;
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => setSelectedMap(opt.id)}
+                  className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
+                    isSelected 
+                      ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
+                      : 'border-slate-205 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="text-lg shrink-0 self-start pt-0.5">{opt.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-705 text-slate-700 flex items-center gap-1.5 font-sans">
+                      <span>{opt.title}</span>
+                      {opt.recommend && (
+                        <span className="scale-[0.85] bg-blue-50 border border-blue-200/50 text-blue-600 px-1 py-[1px] rounded font-semibold text-[8px] font-sans">
+                          推荐
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 self-center ${
+                    isSelected ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
+                  }`}>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-          {step1Selected === 5 && (
-            <div className="mt-1 flex flex-col gap-1 select-none animate-slide-in">
-              <label className="text-[10px] font-bold text-slate-500">请输入自定义导览场景：</label>
-              <input
-                type="text"
-                placeholder="如：高端汽车销售展厅、太空探索巡回特展等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
-                value={step1CustomText}
-                onChange={(e) => {
-                  setStep1CustomText(e.target.value);
-                  setClarificationForm(prev => ({ ...prev, coreScene: e.target.value || '自定义导览场景' }));
-                }}
-              />
-            </div>
+          {MAP_OPTIONS.length > 0 && (
+            <button
+              onClick={() => setClarityModalType('map')}
+              className="mt-1 h-9 rounded-xl border border-dashed border-slate-250 hover:border-slate-400 text-xs text-slate-500 hover:text-slate-850 font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 bg-slate-50/40 hover:bg-slate-50/85 font-sans"
+            >
+              <span>🔍 检索并管理全部 5 个底图资源</span>
+            </button>
           )}
         </div>
       );
     } else if (clarityStep === 2) {
-      // Step 2: 目标受众规划
-      const step2Options = [
-        { id: 1, title: '技术极客与创作者', desc: '爱好前沿科技、AI算法、多传感器联动的专业技术发烧友。' },
-        { id: 2, title: '休闲大众游客', desc: '来到景区好玩好逛，听幽默生动讲解，路线指引平实清晰。' },
-        { id: 3, title: '专家VIP贵宾', desc: '企业接待或重要外宾、高规格参观，讲解需周全严谨且具有深度。' },
-        { id: 4, title: '其他特定群体设定（请填写）', desc: '自定义群体规划，选中后在下方手动填写。' },
-      ];
+      // Step 2: 知识库选择（多选）
+      const shownOptions = KNOWLEDGE_OPTIONS.filter(o => o.recommend || selectedKnowledge.includes(o.id));
       return (
         <div className="flex flex-col gap-2.5">
-          {step2Options.map((opt) => (
-            <div
-              key={opt.id}
-              onClick={() => {
-                setStep2Selected(opt.id);
-                const isCustom = opt.id === 4;
-                setClarificationForm(prev => ({
-                  ...prev,
-                  targetAudience: isCustom ? (step2CustomText || '特定个性受众') : opt.title
-                }));
-              }}
-              className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
-                step2Selected === opt.id 
-                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
-                  : 'border-slate-202 hover:border-slate-300 bg-white'
-              }`}
-            >
-              <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step2Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {opt.id}
-              </div>
-              <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-705 text-slate-700">{opt.title}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
-              </div>
-              {step2Selected === opt.id && (
-                <Check className="w-4 h-4 text-black shrink-0 self-center" />
-              )}
-            </div>
-          ))}
+          <div className="flex flex-col gap-2.5">
+            {shownOptions.map((opt) => {
+              const isSelected = selectedKnowledge.includes(opt.id);
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedKnowledge(selectedKnowledge.filter(id => id !== opt.id));
+                    } else {
+                      setSelectedKnowledge([...selectedKnowledge, opt.id]);
+                    }
+                  }}
+                  className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
+                    isSelected 
+                      ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
+                      : 'border-slate-205 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="text-lg shrink-0 self-start pt-0.5">{opt.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-705 text-slate-700 flex items-center gap-1.5 font-sans">
+                      <span>{opt.title}</span>
+                      {opt.recommend && (
+                        <span className="scale-[0.85] bg-blue-50 border border-blue-200/50 text-blue-600 px-1 py-[1px] rounded font-semibold text-[8px] font-sans">
+                          推荐
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 self-center transition-colors ${
+                    isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white'
+                  }`}>
+                    {isSelected && <Check className="w-3 h-3 stroke-[3px]" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-          {step2Selected === 4 && (
-            <div className="mt-1 flex flex-col gap-1 select-none animate-slide-in">
-              <label className="text-[10px] font-bold text-slate-500">请输入自定义目标群体：</label>
-              <input
-                type="text"
-                placeholder="如：中小学生、高净值投资客户、社区居民等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
-                value={step2CustomText}
-                onChange={(e) => {
-                  setStep2CustomText(e.target.value);
-                  setClarificationForm(prev => ({ ...prev, targetAudience: e.target.value || '自定义目标群体' }));
-                }}
-              />
-            </div>
+          {KNOWLEDGE_OPTIONS.length > 0 && (
+            <button
+              onClick={() => setClarityModalType('knowledge')}
+              className="mt-1 h-9 rounded-xl border border-dashed border-slate-250 hover:border-slate-400 text-xs text-slate-500 hover:text-slate-850 font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 bg-slate-50/40 hover:bg-slate-50/85 font-sans"
+            >
+              <span>🔍 检索并管理全部 5 个知识语料资源</span>
+            </button>
+          )}
+        </div>
+      );
+    } else if (clarityStep === 3) {
+      // Step 3: 动作选择（多选）
+      const shownOptions = ACTION_OPTIONS.filter(o => o.recommend || selectedActions.includes(o.id));
+      return (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5">
+            {shownOptions.map((opt) => {
+              const isSelected = selectedActions.includes(opt.id);
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedActions(selectedActions.filter(id => id !== opt.id));
+                    } else {
+                      setSelectedActions([...selectedActions, opt.id]);
+                    }
+                  }}
+                  className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
+                    isSelected 
+                      ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
+                      : 'border-slate-205 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="text-lg shrink-0 self-start pt-0.5">{opt.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-705 text-slate-700 flex items-center gap-1.5 font-mono">
+                      <span>{opt.title}</span>
+                      {opt.recommend && (
+                        <span className="scale-[0.85] bg-blue-50 border border-blue-200/50 text-blue-600 px-1 py-[1px] rounded font-semibold text-[8px] font-sans">
+                          推荐
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 self-center transition-colors ${
+                    isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white'
+                  }`}>
+                    {isSelected && <Check className="w-3 h-3 stroke-[3px]" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {ACTION_OPTIONS.length > 0 && (
+            <button
+              onClick={() => setClarityModalType('action')}
+              className="mt-1 h-9 rounded-xl border border-dashed border-slate-250 hover:border-slate-400 text-xs text-slate-500 hover:text-slate-850 font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 bg-slate-50/40 hover:bg-slate-50/85 font-sans"
+            >
+              <span>🔍 检索并管理全部 6 个身体动作资源</span>
+            </button>
+          )}
+        </div>
+      );
+    } else if (clarityStep === 4) {
+      // Step 4: 技能选择（多选）
+      const shownOptions = SKILL_OPTIONS.filter(o => o.recommend || selectedSkills.includes(o.id));
+      return (
+        <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5">
+            {shownOptions.map((opt) => {
+              const isSelected = selectedSkills.includes(opt.id);
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedSkills(selectedSkills.filter(id => id !== opt.id));
+                    } else {
+                      setSelectedSkills([...selectedSkills, opt.id]);
+                    }
+                  }}
+                  className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
+                    isSelected 
+                      ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
+                      : 'border-slate-205 hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="text-lg shrink-0 self-start pt-0.5">{opt.icon}</div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-slate-705 text-slate-700 flex items-center gap-1.5 font-mono">
+                      <span>{opt.title}</span>
+                      {opt.recommend && (
+                        <span className="scale-[0.85] bg-blue-50 border border-blue-200/50 text-blue-600 px-1 py-[1px] rounded font-semibold text-[8px] font-sans">
+                          推荐
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
+                  </div>
+                  <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 self-center transition-colors ${
+                    isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white'
+                  }`}>
+                    {isSelected && <Check className="w-3 h-3 stroke-[3px]" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {SKILL_OPTIONS.length > 0 && (
+            <button
+              onClick={() => setClarityModalType('skill')}
+              className="mt-1 h-9 rounded-xl border border-dashed border-slate-250 hover:border-slate-400 text-xs text-slate-500 hover:text-slate-850 font-semibold cursor-pointer transition-all flex items-center justify-center gap-1.5 bg-slate-50/40 hover:bg-slate-50/85 font-sans"
+            >
+              <span>🔍 检索并管理全部 5 个智能接口技能</span>
+            </button>
           )}
         </div>
       );
     } else {
-      // Step 3: 视觉风格设计
-      const step3Options = [
-        { id: 1, title: '科技浅色极简主义', desc: '白色主调、浅灰侧边、弱边框与弱阴影，留白充足、科技感轻。' },
-        { id: 2, title: '工业硬朗暗黑控制台', desc: '深沉暗色基元、高对比电子绿、荧光线段与图解控制框。' },
-        { id: 3, title: '国学典雅水墨山水', desc: '宣纸微黄底色、古典石青朱砂配色、山水纹样衬底与雅致衬线体。' },
-        { id: 4, title: '自定义风格设计（请填写）', desc: '自由指引！选中后，将在下方展开个性化表单描述。' },
-      ];
+      // Step 5: 原地二次确认（显示已选资源，支持折叠与单独展开调整）
       return (
-        <div className="flex flex-col gap-2.5">
-          {step3Options.map((opt) => (
-            <div
-              key={opt.id}
-              onClick={() => {
-                setStep3Selected(opt.id);
-                const isCustom = opt.id === 4;
-                setClarificationForm(prev => ({
-                  ...prev,
-                  visualStyle: isCustom ? (step3CustomText || '极简科技感') : opt.title
-                }));
-              }}
-              className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
-                step3Selected === opt.id 
-                  ? 'border-slate-850 bg-slate-50/60 ring-1 ring-slate-800/10' 
-                  : 'border-slate-202 hover:border-slate-300 bg-white'
-              }`}
-            >
-              <div className={`w-5.5 h-5.5 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
-                step3Selected === opt.id ? 'bg-black text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
-                {opt.id}
-              </div>
-              <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-705 text-slate-700">{opt.title}</h4>
-                <p className="text-[10px] text-slate-400 mt-0.5 leading-relaxed">{opt.desc}</p>
-              </div>
-              {step3Selected === opt.id && (
-                <Check className="w-4 h-4 text-black shrink-0 self-center" />
-              )}
-            </div>
-          ))}
+        <div className="flex flex-col gap-3 text-left select-none">
+          <div className="rounded-xl border border-blue-100 bg-blue-50/20 p-2.5 leading-relaxed text-slate-600 text-[10px] font-medium font-sans">
+            💡 已基于前面的步骤智能生成基础方案！您可以直接在下方点击各类资源展开微调。
+          </div>
 
-          {step3Selected === 4 && (
-            <div className="mt-1 flex flex-col gap-1 select-none animate-slide-in">
-              <label className="text-[10px] font-bold text-slate-500">请输入自定义视觉风格偏好：</label>
-              <input
-                type="text"
-                placeholder="如：赛博朋克霓虹风格、复古像素游戏机UI等..."
-                className="w-full h-9 border border-slate-200 rounded-lg px-3 text-xs outline-none focus:border-black"
-                value={step3CustomText}
-                onChange={(e) => {
-                  setStep3CustomText(e.target.value);
-                  setClarificationForm(prev => ({ ...prev, visualStyle: e.target.value || '自定义视觉风格' }));
-                }}
-              />
+          {/* 地图二次核对 */}
+          <div className="border border-slate-205 rounded-xl bg-slate-50/20 p-2.5 flex flex-col gap-2 transition-all">
+            <div 
+              onClick={() => setIsConfirmMapOpen(prev => !prev)}
+              className="flex items-center justify-between cursor-pointer select-none py-0.5"
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span>🗺️</span>
+                <span>高精底图配置 (单选)</span>
+                <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono">
+                  1
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isConfirmMapOpen ? 'rotate-180' : ''}`} />
             </div>
-          )}
+
+            {!isConfirmMapOpen ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5 font-sans">
+                {MAP_OPTIONS.filter(opt => selectedMap === opt.id).map(opt => (
+                  <div 
+                    key={opt.id}
+                    onClick={() => setIsConfirmMapOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-slate-700 text-[11px] font-medium transition-all cursor-pointer hover:bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                  >
+                    <span>{opt.icon}</span>
+                    <span>{opt.title}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5 mt-0.5 font-sans">
+                {MAP_OPTIONS.map(opt => {
+                  const isSelected = selectedMap === opt.id;
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => setSelectedMap(opt.id)}
+                      className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer select-none transition-all text-[11px] ${
+                        isSelected 
+                          ? 'border-slate-800 bg-white text-slate-800 font-bold shadow-[0_2px_8px_rgba(0,0,0,0.03)]' 
+                          : 'border-slate-200 bg-white/50 hover:bg-white text-slate-500'
+                      }`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="flex-1 truncate text-left">{opt.title}</span>
+                      <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                        isSelected ? 'border-slate-800 bg-slate-900' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 讲解知识库二次核对 */}
+          <div className="border border-slate-205 rounded-xl bg-slate-50/20 p-2.5 flex flex-col gap-2 transition-all">
+            <div 
+              onClick={() => setIsConfirmKnowledgeOpen(prev => !prev)}
+              className="flex items-center justify-between cursor-pointer select-none py-0.5"
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span>📚</span>
+                <span>讲解知识库 (多选)</span>
+                <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono">
+                  {selectedKnowledge.length}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isConfirmKnowledgeOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {!isConfirmKnowledgeOpen ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5 font-sans">
+                {selectedKnowledge.length === 0 ? (
+                  <span className="text-[10px] text-slate-400 italic">未配置讲解语料 (点击展开)</span>
+                ) : (
+                  KNOWLEDGE_OPTIONS.filter(opt => selectedKnowledge.includes(opt.id)).map(opt => (
+                    <div 
+                      key={opt.id}
+                      onClick={() => setIsConfirmKnowledgeOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-slate-700 text-[11px] font-medium transition-all cursor-pointer hover:bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                    >
+                      <span>{opt.icon}</span>
+                      <span>{opt.title}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5 mt-0.5 font-sans">
+                {KNOWLEDGE_OPTIONS.map(opt => {
+                  const isSelected = selectedKnowledge.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedKnowledge(selectedKnowledge.filter(id => id !== opt.id));
+                        } else {
+                          setSelectedKnowledge([...selectedKnowledge, opt.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer select-none transition-all text-[11px] ${
+                        isSelected 
+                          ? 'border-slate-800 bg-white text-slate-800 font-bold shadow-[0_2px_8px_rgba(0,0,0,0.03)]' 
+                          : 'border-slate-200 bg-white/50 hover:bg-white text-slate-500'
+                      }`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="flex-1 truncate text-left">{opt.title}</span>
+                      <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3.5px]" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 动作库二次核对 */}
+          <div className="border border-slate-205 rounded-xl bg-slate-50/20 p-2.5 flex flex-col gap-2 transition-all">
+            <div 
+              onClick={() => setIsConfirmActionsOpen(prev => !prev)}
+              className="flex items-center justify-between cursor-pointer select-none py-0.5"
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span>👋</span>
+                <span>肢体动作搭载 (多选)</span>
+                <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono">
+                  {selectedActions.length}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isConfirmActionsOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {!isConfirmActionsOpen ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5 font-sans">
+                {selectedActions.length === 0 ? (
+                  <span className="text-[10px] text-slate-400 italic">未配置肢体动作 (点击展开)</span>
+                ) : (
+                  ACTION_OPTIONS.filter(opt => selectedActions.includes(opt.id)).map(opt => (
+                    <div 
+                      key={opt.id}
+                      onClick={() => setIsConfirmActionsOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-slate-700 text-[11px] font-medium transition-all cursor-pointer hover:bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                    >
+                      <span>{opt.icon}</span>
+                      <span>{opt.title}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5 mt-0.5 font-sans">
+                {ACTION_OPTIONS.map(opt => {
+                  const isSelected = selectedActions.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedActions(selectedActions.filter(id => id !== opt.id));
+                        } else {
+                          setSelectedActions([...selectedActions, opt.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer select-none transition-all text-[11px] ${
+                        isSelected 
+                          ? 'border-slate-800 bg-white text-slate-800 font-bold shadow-[0_2px_8px_rgba(0,0,0,0.03)]' 
+                          : 'border-slate-200 bg-white/50 hover:bg-white text-slate-500'
+                      }`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="flex-1 truncate text-left">{opt.title}</span>
+                      <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3.5px]" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 技能库二次核对 */}
+          <div className="border border-slate-205 rounded-xl bg-slate-50/20 p-2.5 flex flex-col gap-2 transition-all">
+            <div 
+              onClick={() => setIsConfirmSkillsOpen(prev => !prev)}
+              className="flex items-center justify-between cursor-pointer select-none py-0.5"
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <span>🔌</span>
+                <span>接口技能装配 (多选)</span>
+                <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.5 rounded-full text-[9px] font-bold font-mono">
+                  {selectedSkills.length}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isConfirmSkillsOpen ? 'rotate-180' : ''}`} />
+            </div>
+
+            {!isConfirmSkillsOpen ? (
+              <div className="flex flex-wrap gap-1.5 mt-0.5 font-sans">
+                {selectedSkills.length === 0 ? (
+                  <span className="text-[10px] text-slate-400 italic">未配置底层接口技能 (点击展开)</span>
+                ) : (
+                  SKILL_OPTIONS.filter(opt => selectedSkills.includes(opt.id)).map(opt => (
+                    <div 
+                      key={opt.id}
+                      onClick={() => setIsConfirmSkillsOpen(true)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 hover:border-slate-300 rounded-lg text-slate-700 text-[11px] font-medium transition-all cursor-pointer hover:bg-slate-50 shadow-[0_1px_2px_rgba(0,0,0,0.01)]"
+                    >
+                      <span>{opt.icon}</span>
+                      <span>{opt.title}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5 mt-0.5 font-sans">
+                {SKILL_OPTIONS.map(opt => {
+                  const isSelected = selectedSkills.includes(opt.id);
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedSkills(selectedSkills.filter(id => id !== opt.id));
+                        } else {
+                          setSelectedSkills([...selectedSkills, opt.id]);
+                        }
+                      }}
+                      className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer select-none transition-all text-[11px] ${
+                        isSelected 
+                          ? 'border-slate-800 bg-white text-slate-800 font-bold shadow-[0_2px_8px_rgba(0,0,0,0.03)]' 
+                          : 'border-slate-200 bg-white/50 hover:bg-white text-slate-500'
+                      }`}
+                    >
+                      <span className="text-base">{opt.icon}</span>
+                      <span className="flex-1 truncate text-left">{opt.title}</span>
+                      <div className={`w-3.5 h-3.5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
+                        isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-300 bg-white'
+                      }`}>
+                        {isSelected && <Check className="w-2.5 h-2.5 stroke-[3.5px]" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       );
     }
   };
 
-  // 步骤点击跳转功能
-  const handleStepJump = (st: number) => {
-    setClarityStep(st);
-    setIsStepMenuOpen(false);
-  };
-
   // 下一步动作
   const handleStepNext = () => {
-    if (clarityStep < 3) {
+    if (clarityStep < 5) {
       setClarityStep(clarityStep + 1);
     } else {
-      // 完成对齐，直接转换成 3 分屏，内容、历史、对话框全程保持不变
       handleCompleteClarification();
     }
   };
@@ -983,16 +1203,17 @@ keywords:
   // 推荐快捷方式选项动作
   const handleRecommandAction = () => {
     if (clarityStep === 1) {
-      setStep1Selected(1);
-      setClarificationForm(prev => ({ ...prev, coreScene: '博物馆/展览馆' }));
+      setSelectedMap('博物馆/美术馆');
     } else if (clarityStep === 2) {
-      setStep2Selected(1);
-      setClarificationForm(prev => ({ ...prev, targetAudience: '技术极客与创作者' }));
-    } else {
-      setStep3Selected(1);
-      setClarificationForm(prev => ({ ...prev, visualStyle: '科技浅色极简主义' }));
+      setSelectedKnowledge(['常规讲解问答库', '展品/展项背景文案']);
+    } else if (clarityStep === 3) {
+      setSelectedActions(['wave_hand', 'point_front']);
+    } else if (clarityStep === 4) {
+      setSelectedSkills(['navigate_to_target', 'iot.device_control', 'speak']);
     }
   };
+
+
 
   const renderClarificationForm = () => {
     if (appState === 'workspace') {
@@ -1046,39 +1267,41 @@ keywords:
             <div className="text-[9px] text-slate-500 leading-relaxed font-mono flex flex-col gap-1 pl-4 border-l-2 border-slate-200/80">
               <div>1. 正在解析输入需求「{submittedPromptText}」... OK</div>
               <div>2. 判定核心属性为：<span className="text-slate-800 font-bold">[智能体多机移动导览、室内/高精地图可达点指引]</span></div>
-              <div>3. 启动多路交互模板框架：Step 1「场景选择」、Step 2「客群类型规划」、Step 3「艺术配图风格选择」。</div>
+              <div>3. 启动多路交互模板框架：Step 1「高精SLAM地图底图」、Step 2「关联讲解知识库语料」、Step 3「肢体姿态动作集成」、Step 4「机器人底层智能接口装配」。</div>
               <div className="text-slate-820 font-bold">4. 推荐方案已生成：请在下方互动并确认开发意向细节 🚀</div>
             </div>
           )}
         </div>
-
-        {/* 三步问卷交互卡 */}
-        <div className="w-full bg-white border border-slate-200 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_6px_20px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col">
+ 
+        {/* 五步问卷交互卡 */}
+        <div className="w-full bg-white border border-slate-200 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.02),_0_6px_20px_rgba(0,0,0,0.02)] overflow-hidden flex flex-col relative">
           {/* 卡片顶栏 */}
           <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm">🗒️</span>
-              <span className="text-xs font-extrabold text-slate-700">
-                {clarityStep === 1 ? '应用场景 · 请选择 1 项' : clarityStep === 2 ? '目标群体 · 请选择 1 项' : '整体视觉风格极性偏好 · 请选择 1 项'}
+              <span className="text-xs font-extrabold text-slate-705 text-slate-700">
+                {clarityStep === 1 ? '高精地图配置 · 请选择 1 项' : clarityStep === 2 ? '讲解知识库配置 · 请选择(多选)' : clarityStep === 3 ? '动作姿态搭载 · 请选择(多选)' : clarityStep === 4 ? '集成技能装配 · 请选择(多选)' : '方案原地二次核对与调整'}
               </span>
             </div>
-
+ 
             {/* 指示拉单 */}
             <div className="relative shrink-0">
               <button 
                 onClick={() => setIsStepMenuOpen(!isStepMenuOpen)}
                 className="px-2 py-1 rounded-md border border-slate-200 hover:border-slate-300 bg-white text-[10px] font-bold text-slate-500 flex items-center gap-1 cursor-pointer transition-all"
               >
-                <span>{clarityStep} / 3</span>
+                <span>{clarityStep} / 5</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
-
+ 
               {isStepMenuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 text-left">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-30 text-left">
                   {[
-                    { step: 1, label: '1. 应用场景' },
-                    { step: 2, label: '2. 目标群体' },
-                    { step: 3, label: '3. 视觉风格' }
+                    { step: 1, label: '1. SLAM 地图配置' },
+                    { step: 2, label: '2. 关联讲解知识库' },
+                    { step: 3, label: '3. 肢体动作集成' },
+                    { step: 4, label: '4. 底层接口技能' },
+                    { step: 5, label: '5. 方案确认核对' }
                   ].map((item) => (
                     <button
                       key={item.step}
@@ -1093,46 +1316,214 @@ keywords:
               )}
             </div>
           </div>
-
+ 
           {/* 卡片填充区 */}
           <div className="p-4 flex flex-col gap-3.5 max-h-[380px] overflow-y-auto">
-            <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-left mb-0.5">
-              选择以下最为符合的推荐
+            <div className="text-[9px] font-bold text-slate-405 text-slate-400 uppercase tracking-wider text-left mb-0.5">
+              配置应用所需的核心资源
             </div>
             {renderStepContent()}
           </div>
-
+ 
           {/* 卡片动作条 */}
           <div className="px-4 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between shrink-0">
             <button 
               onClick={handleRecommandAction}
               className="text-[10px] font-bold text-slate-705 hover:text-black transition-colors flex items-center gap-1.5 cursor-pointer bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-202"
             >
-              apply 推荐首选项
+              应用 推荐首选项
             </button>
-
+ 
             <div className="flex items-center gap-2">
               <button 
+                disabled={clarityStep === 1}
                 onClick={() => {
-                  if (clarityStep < 3) {
-                    setClarityStep(clarityStep + 1);
-                  } else {
-                    handleStepNext();
+                  if (clarityStep > 1) {
+                    setClarityStep(clarityStep - 1);
                   }
                 }}
-                className="h-8 px-2.5 rounded-lg hover:bg-slate-100 border border-slate-200 text-slate-500 text-[10px] font-bold cursor-pointer transition-colors"
+                className={`h-8 px-2.5 rounded-lg border text-[10px] font-bold cursor-pointer transition-colors ${
+                  clarityStep === 1 
+                    ? 'border-slate-100 text-slate-300 cursor-not-allowed bg-slate-50/50' 
+                    : 'border-slate-202 hover:bg-slate-100 text-slate-500 bg-white'
+                }`}
               >
-                跳过
+                上一步
               </button>
               <button 
                 onClick={handleStepNext}
                 className="h-8 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold cursor-pointer transition-all flex items-center gap-1"
               >
-                <span>{clarityStep === 3 ? '完成并进入工作区' : '继续'}</span>
+                <span>{clarityStep === 5 ? '确认方案并开发' : '继续'}</span>
                 <span className="font-mono text-slate-300 text-[9px]">↵</span>
               </button>
             </div>
           </div>
+
+          {/* 在原地弹出浮窗进行搜索和选择 */}
+          {clarityModalType && (
+            <div className="absolute inset-0 bg-white z-40 flex flex-col">
+              {/* 标题栏 */}
+              <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between shrink-0">
+                <div className="flex flex-col gap-0.5 text-left">
+                  <span className="text-xs font-bold text-slate-805">
+                    {clarityModalType === 'map' ? '🗺️ 检索并管理地图底图资源' :
+                     clarityModalType === 'knowledge' ? '📚 检索并管理知识库语料资源' :
+                     clarityModalType === 'action' ? '👋 检索并管理肢体动作姿态' :
+                     '🔌 检索并管理自研接口技能'}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium font-sans">
+                    进行实时搜索过滤并确认选择
+                  </span>
+                </div>
+                <button 
+                  onClick={() => setClarityModalType(null)}
+                  className="w-7 h-7 rounded-lg bg-slate-100/80 hover:bg-slate-200/90 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-all cursor-pointer border-0 p-0 text-xs font-bold"
+                  title="关闭搜索"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* 搜索框 */}
+              <div className="p-3 bg-slate-50/20 border-b border-slate-100 shrink-0">
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-slate-400 text-xs">🔍</span>
+                  <input 
+                    type="text" 
+                    placeholder="输入检索关键词或功能描述..."
+                    value={inlineSearchQuery}
+                    onChange={(e) => setInlineSearchQuery(e.target.value)}
+                    className="w-full h-8 pl-8 pr-12 bg-white border border-slate-200 rounded-lg text-xs placeholder-slate-400 outline-none focus:border-slate-500 hover:border-slate-350 transition-all text-left font-sans"
+                  />
+                  {inlineSearchQuery && (
+                    <button
+                      onClick={() => setInlineSearchQuery('')}
+                      className="absolute right-3 text-[10px] text-slate-400 hover:text-slate-650 cursor-pointer border-0 bg-transparent font-sans"
+                    >
+                      清除
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 选项滚动列表 */}
+              <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+                {(() => {
+                  const opts = clarityModalType === 'map' ? MAP_OPTIONS :
+                               clarityModalType === 'knowledge' ? KNOWLEDGE_OPTIONS :
+                               clarityModalType === 'action' ? ACTION_OPTIONS :
+                               SKILL_OPTIONS;
+                  const query = inlineSearchQuery.toLowerCase();
+                  const filtered = opts.filter(o => 
+                    o.title.toLowerCase().includes(query) || 
+                    o.desc.toLowerCase().includes(query)
+                  );
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-12 flex flex-col items-center justify-center text-slate-405 gap-1 select-none font-sans">
+                        <span className="text-[15px]">🔍</span>
+                        <span className="text-[11px] font-medium">无匹配项</span>
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((opt) => {
+                    // 判断是否选中
+                    let isSelected = false;
+                    if (clarityModalType === 'map') {
+                      isSelected = selectedMap === opt.id;
+                    } else if (clarityModalType === 'knowledge') {
+                      isSelected = selectedKnowledge.includes(opt.id);
+                    } else if (clarityModalType === 'action') {
+                      isSelected = selectedActions.includes(opt.id);
+                    } else if (clarityModalType === 'skill') {
+                      isSelected = selectedSkills.includes(opt.id);
+                    }
+
+                    return (
+                      <div
+                        key={opt.id}
+                        onClick={() => {
+                          if (clarityModalType === 'map') {
+                            setSelectedMap(opt.id);
+                          } else if (clarityModalType === 'knowledge') {
+                            if (isSelected) {
+                              setSelectedKnowledge(selectedKnowledge.filter(id => id !== opt.id));
+                            } else {
+                              setSelectedKnowledge([...selectedKnowledge, opt.id]);
+                            }
+                          } else if (clarityModalType === 'action') {
+                            if (isSelected) {
+                              setSelectedActions(selectedActions.filter(id => id !== opt.id));
+                            } else {
+                              setSelectedActions([...selectedActions, opt.id]);
+                            }
+                          } else if (clarityModalType === 'skill') {
+                            if (isSelected) {
+                              setSelectedSkills(selectedSkills.filter(id => id !== opt.id));
+                            } else {
+                              setSelectedSkills([...selectedSkills, opt.id]);
+                            }
+                          }
+                        }}
+                        className={`border rounded-xl p-3 cursor-pointer transition-all flex items-start gap-3 select-none text-left ${
+                          isSelected 
+                            ? 'border-slate-800 bg-slate-50/70 ring-1 ring-slate-800/10' 
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="text-base shrink-0 self-start">{opt.icon}</div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 font-sans leading-none">
+                            <span>{opt.title}</span>
+                            {opt.recommend && (
+                              <span className="bg-blue-50 text-blue-600 px-1 py-[1.5px] rounded text-[8px] border border-blue-100">
+                                推荐
+                              </span>
+                            )}
+                          </h4>
+                          <p className="text-[10px] text-slate-450 mt-1.5 leading-relaxed font-sans">
+                            {opt.desc}
+                          </p>
+                        </div>
+                        {clarityModalType === 'map' ? (
+                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 self-center ${
+                            isSelected ? 'border-slate-800 bg-slate-900' : 'border-slate-200 bg-white'
+                          }`}>
+                            {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
+                        ) : (
+                          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 self-center ${
+                            isSelected ? 'border-slate-800 bg-slate-900 text-white' : 'border-slate-200 bg-white'
+                          }`}>
+                            {isSelected && <span className="text-[9px] font-extrabold select-none">✓</span>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* 底部确认栏 */}
+              <div className="p-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between shrink-0 font-sans">
+                <span className="text-[10px] text-slate-450 font-semibold">
+                  已装载 {clarityModalType === 'map' ? '1' : 
+                          clarityModalType === 'knowledge' ? selectedKnowledge.length :
+                          clarityModalType === 'action' ? selectedActions.length :
+                          selectedSkills.length} 个配置
+                </span>
+                <button
+                  onClick={() => setClarityModalType(null)}
+                  className="h-8 px-4 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded-xl border-0 cursor-pointer transition-all shrink-0 shadow-2xs"
+                >
+                  确认并更新
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -1408,28 +1799,69 @@ keywords:
                 />
 
                 {/* ===================== 中间屏: 人设、行为剧本、任务书 ===================== */}
-                <CenterPanel 
-                  currentScriptView={currentScriptView}
-                  setCurrentScriptView={setCurrentScriptView}
-                  personaName={personaName}
-                  setPersonaName={setPersonaName}
-                  toneStyle={toneStyle}
-                  setToneStyle={setToneStyle}
-                  voiceOption={voiceOption}
-                  setVoiceOption={setVoiceOption}
-                  activePanelTab={activePanelTab}
-                  setActivePanelTab={setActivePanelTab}
-                  highlightedAction={highlightedAction}
-                  setHighlightedAction={setHighlightedAction}
-                  docContents={docContents}
-                  setDocContents={setDocContents}
-                  jsonText={jsonText}
-                  setJsonText={setJsonText}
-                  tasks={tasks}
-                  setTasks={setTasks}
-                  currentMapName={currentMapName}
-                  isMapConflict={isMapConflict}
-                />
+                {(() => {
+                  const handleUpdateJsonText = (newVal: string) => {
+                  setJsonText(newVal);
+                  setTaskContents(prev => ({
+                    ...prev,
+                    [currentTaskView]: newVal
+                  }));
+                  try {
+                    const parsed = JSON.parse(newVal);
+                    if (typeof parsed === 'object' && parsed !== null) {
+                      setTasks(Array.isArray(parsed) ? parsed : (parsed.actions || []));
+                    }
+                  } catch (e) {
+                    // ignore
+                  }
+                };
+
+                const handleUpdateTasks = (newTasks: any[]) => {
+                  setTasks(newTasks);
+                  setTaskContents(prev => {
+                    try {
+                      const text = prev[currentTaskView] || '[]';
+                      const parsed = JSON.parse(text);
+                      if (Array.isArray(parsed)) {
+                        return { ...prev, [currentTaskView]: JSON.stringify(newTasks, null, 2) };
+                      } else if (parsed && typeof parsed === 'object') {
+                        parsed.actions = newTasks;
+                        return { ...prev, [currentTaskView]: JSON.stringify(parsed, null, 2) };
+                      }
+                    } catch (e) {}
+                    return { ...prev, [currentTaskView]: JSON.stringify(newTasks, null, 2) };
+                  });
+                };
+
+                return (
+                  <CenterPanel 
+                    currentScriptView={currentScriptView}
+                    setCurrentScriptView={setCurrentScriptView}
+                    personaName={personaName}
+                    setPersonaName={setPersonaName}
+                    toneStyle={toneStyle}
+                    setToneStyle={setToneStyle}
+                    voiceOption={voiceOption}
+                    setVoiceOption={setVoiceOption}
+                    activePanelTab={activePanelTab}
+                    setActivePanelTab={setActivePanelTab}
+                    highlightedAction={highlightedAction}
+                    setHighlightedAction={setHighlightedAction}
+                    docContents={docContents}
+                    setDocContents={setDocContents}
+                    jsonText={jsonText}
+                    setJsonText={handleUpdateJsonText}
+                    tasks={tasks}
+                    setTasks={handleUpdateTasks}
+                    currentMapName={currentMapName}
+                    isMapConflict={isMapConflict}
+                    taskContents={taskContents}
+                    setTaskContents={setTaskContents}
+                    currentTaskView={currentTaskView}
+                    setCurrentTaskView={setCurrentTaskView}
+                  />
+                );
+              })()}
 
                 {/* ===================== 右边屏: 资源库 (包括地图、知识库、动作、技能、MCP) ===================== */}
                 <RightPanel 
